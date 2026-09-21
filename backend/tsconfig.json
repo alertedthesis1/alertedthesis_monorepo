@@ -14,7 +14,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "types": ["node"]
   },
   "ts-node": {
     "compilerOptions": {
@@ -22,5 +23,23 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "src/testRelationships.ts",
+    "src/testReportGeneration.ts",
+    "src/testReportGenerationAllTypes.ts",
+    "src/utils/testConnection.ts",
+    "src/utils/testDNS.ts",
+    "src/clearAttendance.ts",
+    "src/clearExistingData.ts",
+    "src/recalculateRiskScores.ts",
+    "src/seedAttendanceForAllTerms.ts",
+    "src/seedHighRiskStudents.ts",
+    "src/seedInterconnectedData.ts",
+    "src/seedSchedules.ts",
+    "src/seedStudentIds.ts",
+    "src/seedUsers.ts",
+    "src/utils/seed.ts",
+    "src/utils/seedHistoricalData.ts"
+  ]
 }
