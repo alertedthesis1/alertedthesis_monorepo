@@ -9,4 +9,4 @@ services:
       - key: NEXT_PUBLIC_API_URL
         value: https://alertedthesis-backend.onrender.com
       - key: NEXT_PUBLIC_R2_URL
-        value: https://alerted-storage.r2.cloudflarestorage.com
+        value: https://022e50c9cb2cd84a296eddb3a68d0e28.r2.cloudflarestorage.com/alerted-storage
