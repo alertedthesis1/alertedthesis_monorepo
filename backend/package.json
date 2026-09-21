@@ -8,13 +8,13 @@
   "scripts": {
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "echo 'Skipping TypeScript build for production'",
-    "start": "ts-node src/index.ts",
-    "seed": "ts-node src/utils/seed.ts",
-    "seed-high-risk": "ts-node src/seedHighRiskStudents.ts",
-    "seed-attendance-all": "ts-node src/seedAttendanceForAllTerms.ts",
-    "clear-data": "ts-node src/clearExistingData.ts",
-    "migrate": "ts-node migrations/run.ts",
-    "recalculate-risks": "ts-node src/recalculateRiskScores.ts"
+    "start": "npx ts-node src/index.ts",
+    "seed": "npx ts-node src/utils/seed.ts",
+    "seed-high-risk": "npx ts-node src/seedHighRiskStudents.ts",
+    "seed-attendance-all": "npx ts-node src/seedAttendanceForAllTerms.ts",
+    "clear-data": "npx ts-node src/clearExistingData.ts",
+    "migrate": "npx ts-node migrations/run.ts",
+    "recalculate-risks": "npx ts-node src/recalculateRiskScores.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",
