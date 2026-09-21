@@ -3,8 +3,8 @@ services:
     name: alerted-frontend
     env: static
     plan: free
-    buildCommand: npm run build
-    staticPublishPath: .next
+    buildCommand: npm install && npm run build
+    staticPublishPath: out
     envVars:
       - key: NEXT_PUBLIC_API_URL
         value: https://alerted-backend.onrender.com
