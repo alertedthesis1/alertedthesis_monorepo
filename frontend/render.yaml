@@ -7,6 +7,6 @@ services:
     staticPublishPath: out
     envVars:
       - key: NEXT_PUBLIC_API_URL
-        value: https://alerted-backend.onrender.com
+        value: https://alertedthesis-backend.onrender.com
       - key: NEXT_PUBLIC_R2_URL
         value: https://alerted-storage.r2.cloudflarestorage.com
