@@ -3,7 +3,6 @@
     "target": "ES2020",
     "module": "commonjs",
     "lib": ["ES2020"],
-    "types": ["node"],
     "outDir": "./dist",
     "rootDir": "./src",
     "strict": false,
@@ -20,22 +19,6 @@
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
-    "dist",
-    "src/testRelationships.ts",
-    "src/testReportGeneration.ts",
-    "src/testReportGenerationAllTypes.ts",
-    "src/utils/testConnection.ts",
-    "src/utils/testDNS.ts",
-    "src/clearAttendance.ts",
-    "src/clearExistingData.ts",
-    "src/recalculateRiskScores.ts",
-    "src/seedAttendanceForAllTerms.ts",
-    "src/seedHighRiskStudents.ts",
-    "src/seedInterconnectedData.ts",
-    "src/seedSchedules.ts",
-    "src/seedStudentIds.ts",
-    "src/seedUsers.ts",
-    "src/utils/seed.ts",
-    "src/utils/seedHistoricalData.ts"
+    "dist"
   ]
 }
