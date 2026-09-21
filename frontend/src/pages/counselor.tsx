@@ -217,6 +217,11 @@ export default function Counselor() {
 
   // Recalculate risk scores when term/year filters change
   const handleRecalculateRiskScores = async () => {
+    if (!selectedTerm && !selectedYear) {
+      alert('Please select a term or year to recalculate risk scores');
+      return;
+    }
+    
     setIsRecalculating(true);
     try {
       await recalculateAllRiskScores(selectedTerm || undefined, selectedYear || undefined);

@@ -3,7 +3,10 @@ import { RiskLevel, StudentRecord, CaseloadStudent, AlertItem } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
-const client = axios.create({ baseURL: API_URL, timeout: 8000 });
+const client = axios.create({ baseURL: API_URL, timeout: 30000 });
+
+// Separate client for long-running operations like recalculation
+const longRunningClient = axios.create({ baseURL: API_URL, timeout: 120000 });
 
 export interface DashboardStats {
   totalStudents: number;
@@ -562,7 +565,7 @@ export async function recalculateRiskScore(studentId: string, term?: string, yea
 // Recalculate risk scores for all students with optional term/year
 export async function recalculateAllRiskScores(term?: string, year?: string): Promise<{ message: string; updated: number; failed: number; term?: string; year?: string }> {
   try {
-    const { data } = await client.post<{ message: string; updated: number; failed: number; term?: string; year?: string }>('/risk-scores/recalculate-all', { term, year });
+    const { data } = await longRunningClient.post<{ message: string; updated: number; failed: number; term?: string; year?: string }>('/risk-scores/recalculate-all', { term, year });
     return data;
   } catch (error) {
     console.error('Error recalculating all risk scores:', error);
