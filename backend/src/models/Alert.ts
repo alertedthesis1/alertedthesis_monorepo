@@ -1,0 +1,41 @@
+import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IAlert extends Document {
+  student_id: mongoose.Types.ObjectId;
+  category: 'Attendance' | 'Academic' | 'Behavioral';
+  date: Date;
+  message: string;
+  resolved: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const alertSchema = new Schema<IAlert>(
+  {
+    student_id: {
+      type: Schema.Types.ObjectId,
+      ref: 'Student',
+      required: true,
+    },
+    category: {
+      type: String,
+      enum: ['Attendance', 'Academic', 'Behavioral'],
+      required: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+    },
+    message: {
+      type: String,
+      required: true,
+    },
+    resolved: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
+export const Alert = mongoose.model<IAlert>('Alert', alertSchema);
