@@ -101,7 +101,7 @@ export interface EarlyWarningSummary {
     medium: number;
     low: number;
   };
-  average_dropout_risk: number;
+  average_student_at_risk: number;
   average_academic_failure_risk: number;
   common_risk_factors: string[];
 }

@@ -58,12 +58,12 @@ export default function Login() {
             </span>
             <div>
               <p className="text-xl font-bold">AlertED</p>
-              <p className="text-xs text-green-100">Predict. Prevent. Protect Students&apos; Future.</p>
+              <p className="text-xs text-green-100">Early Warning and Prevention System for Students at Risk</p>
             </div>
           </div>
           <div>
             <h1 className="text-4xl font-bold leading-tight">
-              Early warning system for student dropout prevention
+              Early Warning and Prevention System for Students at Risk
             </h1>
             <p className="mt-4 max-w-md text-green-100">
               AlertED uses machine learning over attendance, academic performance, and behavior
@@ -72,7 +72,7 @@ export default function Login() {
             <ul className="mt-8 space-y-3 text-sm text-green-50">
               <li className="flex items-center gap-2">• Real-time risk tracking with color-coded alerts</li>
               <li className="flex items-center gap-2">• Visual insights on trends and model accuracy</li>
-              <li className="flex items-center gap-2">• ML-generated dropout risk scores</li>
+              <li className="flex items-center gap-2">• ML-generated student at risk scores</li>
             </ul>
           </div>
           <p className="text-xs text-green-200">© {new Date().getFullYear()} St. Joseph College</p>

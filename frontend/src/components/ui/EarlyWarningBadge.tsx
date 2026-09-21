@@ -55,7 +55,7 @@ export default function EarlyWarningBadge({ prediction, size = 'md', showDetails
         <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
           <div className="mb-3 grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-gray-500">Dropout Risk</p>
+              <p className="text-xs text-gray-500">Student at Risk</p>
               <p className="text-sm font-semibold text-gray-900">{prediction.dropout_risk}%</p>
             </div>
             <div>

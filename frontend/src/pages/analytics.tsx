@@ -225,7 +225,7 @@ export default function Analytics() {
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
             <h2 className="text-base font-bold text-gray-900">Attendance Pattern Analysis</h2>
-            <p className="mb-4 text-sm text-gray-500">Daily attendance rates and dropout risk correlation</p>
+            <p className="mb-4 text-sm text-gray-500">Daily attendance rates and student at risk correlation</p>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={attendancePattern}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

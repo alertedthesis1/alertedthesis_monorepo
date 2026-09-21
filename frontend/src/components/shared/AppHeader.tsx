@@ -39,7 +39,7 @@ export default function AppHeader({ showSearch = true }: { showSearch?: boolean 
           </span>
           <span className="leading-tight">
             <span className="block text-lg font-bold text-gray-900">AlertED</span>
-            <span className="block text-[11px] text-gray-500">Predict. Prevent. Protect Students&apos; Future.</span>
+            <span className="block text-[11px] text-gray-500">Early Warning and Prevention System for Students at Risk</span>
           </span>
         </Link>
 
