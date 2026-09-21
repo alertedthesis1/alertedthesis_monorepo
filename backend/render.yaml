@@ -3,8 +3,8 @@ services:
     name: alerted-backend
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: node -r ts-node/register src/index.ts
+    buildCommand: npm install && npm run build
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production

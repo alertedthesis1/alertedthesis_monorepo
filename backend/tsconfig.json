@@ -1,38 +1,26 @@
 {
   "compilerOptions": {
-    // "target": "ES2020",
-    // "module": "commonjs",
-    // "lib": ["ES2020"],
-    // "outDir": "./dist",
-    // "rootDir": "./src",
-    // "strict": false,
-    // "esModuleInterop": true,
-    // "skipLibCheck": true,
-    // "forceConsistentCasingInFileNames": false,
-    // "resolveJsonModule": true,
-    // "declaration": false,
-    // "declarationMap": false,
-    // "sourceMap": false,
-    // "moduleResolution": "node",
-    // "allowSyntheticDefaultImports": true,
-    // "noImplicitAny": false
-    "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "types": ["node"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
+    "strict": false,
     "esModuleInterop": true,
-    "skipLibCheck": true
-  },
-  "ts-node": {
-    "compilerOptions": {
-      "module": "commonjs"
-    }
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": false,
+    "resolveJsonModule": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "allowSyntheticDefaultImports": true,
+    "noImplicitAny": false
   },
   "include": ["src/**/*"],
   "exclude": [
     "node_modules",
+    "dist",
     "src/testRelationships.ts",
     "src/testReportGeneration.ts",
     "src/testReportGenerationAllTypes.ts",
