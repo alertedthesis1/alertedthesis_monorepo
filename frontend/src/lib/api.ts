@@ -964,6 +964,7 @@ export interface FacultyNotification {
   priority: 'high' | 'medium' | 'low';
   created_at: string;
   read: boolean;
+  link?: string;
 }
 
 // Fetch notifications for a faculty member
