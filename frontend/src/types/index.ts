@@ -45,7 +45,7 @@ export interface StudentRecord {
   email: string;
   phone?: string;
   address?: string;
-  enrolledDate: string;
+  enrolledDate?: string;
   guardianName?: string;
   guardianRelation?: string;
   guardianPhone?: string;
@@ -69,6 +69,7 @@ export interface CaseloadStudent extends StudentRecord {
   lastSession: string;
   nextAppointment: string;
   appointmentScheduled: boolean;
+  enrolledDate?: string; // Change from string to string | undefined
 }
 
 export interface AlertItem {
