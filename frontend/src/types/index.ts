@@ -43,12 +43,12 @@ export interface StudentRecord {
   grade: string;
   section: string;
   email: string;
-  phone: string;
-  address: string;
+  phone?: string;
+  address?: string;
   enrolledDate: string;
-  guardianName: string;
-  guardianRelation: string;
-  guardianPhone: string;
+  guardianName?: string;
+  guardianRelation?: string;
+  guardianPhone?: string;
   riskLevel: RiskLevel;
   riskScore: number;
   attendance: number;
