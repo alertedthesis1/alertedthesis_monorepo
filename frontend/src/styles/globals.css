@@ -41,10 +41,25 @@ body {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 .fade-in {
   animation: fadeIn 0.3s ease-in;
 }
 
 .slide-in {
   animation: slideIn 0.3s ease-in;
+}
+
+.animate-slide-in {
+  animation: slideInRight 0.3s ease-out;
 }

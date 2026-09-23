@@ -5,7 +5,7 @@ import { Intervention } from '../models/Intervention';
 import { BehaviorReport } from '../models/BehaviorReport';
 import { RiskScore } from '../models/RiskScore';
 
-const OPENROUTER_API_KEY = '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';
+const OPENROUTER_API_KEY: string = process.env.OPENROUTER_API_KEY || '';
 
 export interface StudentSummaryData {
   student: any;
@@ -44,6 +44,12 @@ export class StudentSummaryService {
    * Generate AI summary using OpenRouter API
    */
   async generateAISummary(studentData: StudentSummaryData): Promise<string> {
+    // Check if API key is configured
+    if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === '') {
+      console.warn('OpenRouter API key not configured. Using fallback summary.');
+      return this.generateFallbackSummary(studentData);
+    }
+
     const { student, attendance, academics, interventions, behaviorReports, riskScores } = studentData;
 
     // Calculate key metrics
@@ -61,16 +67,16 @@ export class StudentSummaryService {
     // Build context for AI
     const context = `
 Student Information:
-- Name: ${student?.firstName} ${student?.lastName}
+- Name: ${student?.first_name} ${student?.last_name}
 - ID: ${student?.student_id}
-- Grade: ${student?.grade}
+- Grade: ${student?.grade_level || student?.year_level}
 - Section: ${student?.section}
 
 Academic Performance:
-- Latest GPA: ${latestAcademic?.gpa || 'N/A'}
-- Major Subjects Enrolled: ${latestAcademic?.major_subjects_enrolled || 'N/A'}
-- Major Subjects Passed: ${latestAcademic?.major_subjects_passed || 'N/A'}
-- Major Subjects Failed: ${latestAcademic?.major_subjects_failed || 'N/A'}
+- Overall Average: ${latestAcademic?.overall_average || 'N/A'}
+- Mathematics Grade: ${latestAcademic?.mathematics_grade || 'N/A'}
+- English Grade: ${latestAcademic?.english_grade || 'N/A'}
+- Science Grade: ${latestAcademic?.science_grade || 'N/A'}
 
 Attendance (Last 10 records):
 - Attendance Rate: ${attendanceRate.toFixed(1)}%
@@ -140,8 +146,54 @@ Behavior Reports:
       }
     } catch (error) {
       console.error('Error generating AI summary:', error);
-      throw error;
+      // Return fallback summary instead of throwing error
+      return this.generateFallbackSummary(studentData);
     }
+  }
+
+  /**
+   * Generate a fallback summary when AI is unavailable
+   */
+  private generateFallbackSummary(studentData: StudentSummaryData): string {
+    const { student, attendance, academics, interventions, behaviorReports, riskScores } = studentData;
+
+    // Calculate key metrics
+    const recentAttendance = attendance.slice(0, 10);
+    const attendanceRate = recentAttendance.length > 0
+      ? (recentAttendance.filter(a => a.present).length / recentAttendance.length) * 100
+      : 0;
+
+    const latestAcademic = academics[0];
+    const latestRisk = riskScores[0];
+
+    const activeInterventions = interventions.filter(i => i.status === 'Active');
+    const completedInterventions = interventions.filter(i => i.status === 'Completed');
+
+    // Build a structured summary
+    const summary = [
+      `**Student Overview:** ${student?.first_name} ${student?.last_name} (${student?.student_id}) - Grade ${student?.grade_level || student?.year_level}, Section ${student?.section}`,
+      `**Academic Performance:** Overall Average: ${latestAcademic?.overall_average || 'N/A'}, Mathematics: ${latestAcademic?.mathematics_grade || 'N/A'}, English: ${latestAcademic?.english_grade || 'N/A'}, Science: ${latestAcademic?.science_grade || 'N/A'}`,
+      `**Attendance:** ${attendanceRate.toFixed(1)}% attendance rate in recent records`,
+      `**Risk Assessment:** Current level: ${latestRisk?.risk_level || 'N/A'}, Risk score: ${latestRisk?.risk_score || 'N/A'}`,
+      `**Interventions:** ${interventions.length} total (${activeInterventions.length} active, ${completedInterventions.length} completed)`,
+      `**Behavior Reports:** ${behaviorReports.length} incidents reported`,
+    ];
+
+    // Add specific concerns based on data
+    const concerns = [];
+    if (attendanceRate < 80) concerns.push('Poor attendance pattern requiring attention');
+    if (latestAcademic?.overall_average && parseFloat(latestAcademic.overall_average) < 75) concerns.push('Academic performance below threshold');
+    if (latestRisk?.risk_level === 'High' || latestRisk?.risk_level === 'Critical') concerns.push('High risk status requires immediate intervention');
+    if (activeInterventions.length > 3) concerns.push('Multiple active interventions may need prioritization');
+
+    if (concerns.length > 0) {
+      summary.push('**Key Concerns:**');
+      concerns.forEach(concern => summary.push(`- ${concern}`));
+    } else {
+      summary.push('**Status:** Student appears to be on track with manageable concerns.');
+    }
+
+    return summary.join('\n');
   }
 
   /**

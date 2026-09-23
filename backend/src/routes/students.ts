@@ -66,12 +66,10 @@ router.get('/:id/ai-summary', async (req: Request, res: Response) => {
     res.json({ data: summary });
   } catch (error) {
     console.error('Error generating AI summary:', error);
-    // Return a fallback summary instead of error
-    res.json({
-      data: {
-        data: {},
-        aiSummary: 'Unable to generate AI summary at this time. Please check the student details manually.'
-      }
+    // Return error response with proper status code
+    res.status(500).json({
+      error: 'Failed to generate AI summary',
+      message: 'Unable to generate AI summary at this time. Please try again later or check the student details manually.'
     });
   }
 });
@@ -90,33 +88,22 @@ router.get('/:id/academics', async (req: Request, res: Response) => {
 });
 
 // Create a new academic record for a student
-// Accepts term, year, subject grades, course counts, and total units
-// GPA and overall average are computed automatically from subject grades
+// Accepts term, year, and subject grades
+// Overall average is computed automatically from subject grades
 router.post('/:id/academics', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { term, year, mathematics_grade, english_grade, science_grade, major_subjects_enrolled, major_subjects_passed, major_subjects_failed, total_units } = req.body;
+    const { term, year, mathematics_grade, english_grade, science_grade } = req.body;
 
-    // Calculate overall average and GPA automatically
+    // Calculate overall average automatically
     const mathGrade = parseFloat(mathematics_grade) || 0;
     const englishGrade = parseFloat(english_grade) || 0;
     const scienceGrade = parseFloat(science_grade) || 0;
-    
+
     let overall_average = 0;
-    let gpa = 0;
-    
+
     if (mathGrade > 0 || englishGrade > 0 || scienceGrade > 0) {
       overall_average = parseFloat(((mathGrade + englishGrade + scienceGrade) / 3).toFixed(1));
-      const avgGrade = overall_average;
-      
-      // Convert to GPA (4.0 scale): 90-100 = 4.0, 80-89 = 3.0-3.9, 70-79 = 2.0-2.9, 60-69 = 1.0-1.9, below 60 = 0.0
-      if (avgGrade >= 90) gpa = 4.0;
-      else if (avgGrade >= 80) gpa = 3.0 + (avgGrade - 80) / 10;
-      else if (avgGrade >= 70) gpa = 2.0 + (avgGrade - 70) / 10;
-      else if (avgGrade >= 60) gpa = 1.0 + (avgGrade - 60) / 10;
-      else gpa = 0.0;
-      
-      gpa = parseFloat(gpa.toFixed(2));
     }
 
     const academic = await AcademicRecord.create({
@@ -127,11 +114,6 @@ router.post('/:id/academics', async (req: Request, res: Response) => {
       english_grade,
       science_grade,
       overall_average,
-      gpa,
-      major_subjects_enrolled,
-      major_subjects_passed,
-      major_subjects_failed,
-      total_units,
     });
     res.status(201).json({ data: academic });
   } catch (error) {
@@ -142,37 +124,26 @@ router.post('/:id/academics', async (req: Request, res: Response) => {
 
 // Update an existing academic record by ID
 // Returns the updated record with new values
-// GPA and overall average are computed automatically from subject grades
+// Overall average is computed automatically from subject grades
 router.put('/academics/:academicId', async (req: Request, res: Response) => {
   try {
     const { academicId } = req.params;
-    const { term, year, mathematics_grade, english_grade, science_grade, major_subjects_enrolled, major_subjects_passed, major_subjects_failed, total_units } = req.body;
+    const { term, year, mathematics_grade, english_grade, science_grade } = req.body;
 
-    // Calculate overall average and GPA automatically
+    // Calculate overall average automatically
     const mathGrade = parseFloat(mathematics_grade) || 0;
     const englishGrade = parseFloat(english_grade) || 0;
     const scienceGrade = parseFloat(science_grade) || 0;
-    
+
     let overall_average = 0;
-    let gpa = 0;
-    
+
     if (mathGrade > 0 || englishGrade > 0 || scienceGrade > 0) {
       overall_average = parseFloat(((mathGrade + englishGrade + scienceGrade) / 3).toFixed(1));
-      const avgGrade = overall_average;
-      
-      // Convert to GPA (4.0 scale): 90-100 = 4.0, 80-89 = 3.0-3.9, 70-79 = 2.0-2.9, 60-69 = 1.0-1.9, below 60 = 0.0
-      if (avgGrade >= 90) gpa = 4.0;
-      else if (avgGrade >= 80) gpa = 3.0 + (avgGrade - 80) / 10;
-      else if (avgGrade >= 70) gpa = 2.0 + (avgGrade - 70) / 10;
-      else if (avgGrade >= 60) gpa = 1.0 + (avgGrade - 60) / 10;
-      else gpa = 0.0;
-      
-      gpa = parseFloat(gpa.toFixed(2));
     }
 
     const academic = await AcademicRecord.findByIdAndUpdate(
       academicId,
-      { term, year, mathematics_grade, english_grade, science_grade, overall_average, gpa, major_subjects_enrolled, major_subjects_passed, major_subjects_failed, total_units },
+      { term, year, mathematics_grade, english_grade, science_grade, overall_average },
       { new: true }
     );
     if (!academic) {

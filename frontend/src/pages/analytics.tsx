@@ -13,6 +13,8 @@ import {
   Lightbulb,
   CheckCircle,
   Info,
+  Filter,
+  X,
 } from 'lucide-react';
 import {
   AreaChart,
@@ -39,10 +41,22 @@ export default function Analytics() {
   const [dashboardStats, setDashboardStats] = useState<DashboardStats | null>(null);
   const [insights, setInsights] = useState<AnalyticsInsight[]>([]);
   const [loadingInsights, setLoadingInsights] = useState(true);
+  
+  // Term and year filters
+  const [selectedTerm, setSelectedTerm] = useState('');
+  const [selectedYear, setSelectedYear] = useState('');
+  const terms = ['1st Term', '2nd Term', '3rd Term'];
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
+  
+  // Time granularity filters for each graph
+  const [riskTrendGranularity, setRiskTrendGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [interventionGranularity, setInterventionGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
+  const [attendanceGranularity, setAttendanceGranularity] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
 
   useEffect(() => {
     let active = true;
-    Promise.all([fetchAnalytics(), fetchDashboardStats(), fetchAnalyticsInsights()]).then(([d, stats, insightsData]) => {
+    Promise.all([fetchAnalytics(selectedTerm, selectedYear, riskTrendGranularity, interventionGranularity, attendanceGranularity), fetchDashboardStats(undefined, selectedTerm, selectedYear), fetchAnalyticsInsights()]).then(([d, stats, insightsData]) => {
       if (active) {
         setData(d);
         setDashboardStats(stats);
@@ -53,7 +67,7 @@ export default function Analytics() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [selectedTerm, selectedYear, riskTrendGranularity, interventionGranularity, attendanceGranularity]);
 
   if (!data) {
     return (
@@ -88,6 +102,57 @@ export default function Analytics() {
               <h1 className="text-xl font-bold text-gray-900">Analytics &amp; Reports</h1>
               <p className="text-xs text-gray-500">Data-driven insights for student success</p>
             </div>
+          </div>
+        </div>
+
+        {/* Term and Year Filters */}
+        <div className="mb-6 rounded-xl border border-gray-200 bg-white p-4">
+          <div className="flex items-center gap-3 mb-3">
+            <Filter size={18} className="text-gray-600" />
+            <h3 className="text-sm font-semibold text-gray-900">Filter by Term and Year</h3>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Term:</label>
+              <select
+                value={selectedTerm}
+                onChange={(e) => setSelectedTerm(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">All Terms</option>
+                {terms.map((term) => (
+                  <option key={term} value={term}>
+                    {term}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Year:</label>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="">All Years</option>
+                {years.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {(selectedTerm || selectedYear) && (
+              <button
+                onClick={() => {
+                  setSelectedTerm('');
+                  setSelectedYear('');
+                }}
+                className="flex items-center gap-2 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
+              >
+                <X size={14} /> Clear Filters
+              </button>
+            )}
           </div>
         </div>
 
@@ -167,8 +232,21 @@ export default function Analytics() {
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-            <h2 className="text-base font-bold text-gray-900">Risk Trend Analysis</h2>
-            <p className="mb-4 text-sm text-gray-500">Student risk levels over the academic year</p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Risk Trend Analysis</h2>
+                <p className="text-sm text-gray-500">Student risk levels over the academic year</p>
+              </div>
+              <select
+                value={riskTrendGranularity}
+                onChange={(e) => setRiskTrendGranularity(e.target.value as 'daily' | 'weekly' | 'monthly')}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={riskTrend} stackOffset="none">
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -210,8 +288,21 @@ export default function Analytics() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-            <h2 className="text-base font-bold text-gray-900">Intervention Effectiveness</h2>
-            <p className="mb-4 text-sm text-gray-500">Success rates by intervention type</p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Intervention Effectiveness</h2>
+                <p className="text-sm text-gray-500">Success rates by intervention type</p>
+              </div>
+              <select
+                value={interventionGranularity}
+                onChange={(e) => setInterventionGranularity(e.target.value as 'daily' | 'weekly' | 'monthly')}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={interventionEffectiveness}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
@@ -224,8 +315,21 @@ export default function Analytics() {
           </div>
 
           <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
-            <h2 className="text-base font-bold text-gray-900">Attendance Pattern Analysis</h2>
-            <p className="mb-4 text-sm text-gray-500">Daily attendance rates and student at risk correlation</p>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-gray-900">Attendance Pattern Analysis</h2>
+                <p className="text-sm text-gray-500">Daily attendance rates and student at risk correlation</p>
+              </div>
+              <select
+                value={attendanceGranularity}
+                onChange={(e) => setAttendanceGranularity(e.target.value as 'daily' | 'weekly' | 'monthly')}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              >
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </div>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={attendancePattern}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />

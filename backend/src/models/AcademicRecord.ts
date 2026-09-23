@@ -14,11 +14,6 @@ export interface IAcademicRecord extends Document {
   english_grade: number;
   science_grade: number;
   overall_average: number;
-  gpa: number;
-  major_subjects_enrolled: number;
-  major_subjects_passed: number;
-  major_subjects_failed: number;
-  total_units: number;
   major_subject_grades: ICourseGrade[];
   createdAt: Date;
   updatedAt: Date;
@@ -65,15 +60,6 @@ const academicRecordSchema = new Schema<IAcademicRecord>(
       min: 0,
       max: 100,
     },
-    gpa: {
-      type: Number,
-      min: 0,
-      max: 4,
-    },
-    major_subjects_enrolled: Number,
-    major_subjects_passed: Number,
-    major_subjects_failed: Number,
-    total_units: Number,
     major_subject_grades: [courseGradeSchema],
   },
   { timestamps: true }

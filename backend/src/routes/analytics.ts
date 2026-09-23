@@ -11,15 +11,47 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // Aggregated analytics for the Analytics & Reports page
-router.get('/overview', async (_req: Request, res: Response) => {
+router.get('/overview', async (req: Request, res: Response) => {
   try {
+    const term = req.query.term as string;
+    const year = req.query.year as string;
+    const riskTrendGranularity = req.query.riskTrendGranularity as string || 'monthly';
+    const interventionGranularity = req.query.interventionGranularity as string || 'monthly';
+    const attendanceGranularity = req.query.attendanceGranularity as string || 'weekly';
+    
+    // Build date range filter based on term and year
+    let dateFilter: any = {};
+    if (term && year) {
+      const termStartMonth = term === '1st Term' ? 0 : term === '2nd Term' ? 4 : 8; // Jan, May, Sep
+      const termEndMonth = term === '1st Term' ? 3 : term === '2nd Term' ? 7 : 11; // Apr, Aug, Dec
+      
+      const startDate = new Date(parseInt(year), termStartMonth, 1);
+      const endDate = new Date(parseInt(year), termEndMonth, 31, 23, 59, 59);
+      
+      dateFilter = {
+        prediction_date: { $gte: startDate, $lte: endDate }
+      };
+    } else if (year) {
+      const startDate = new Date(parseInt(year), 0, 1);
+      const endDate = new Date(parseInt(year), 11, 31, 23, 59, 59);
+      
+      dateFilter = {
+        prediction_date: { $gte: startDate, $lte: endDate }
+      };
+    }
+    // If no filters are provided, dateFilter remains empty to show all historical data
+
     const totalStudents = await Student.countDocuments();
 
     // Latest risk per student for distribution
-    const latestRisks = await RiskScore.aggregate([
-      { $sort: { prediction_date: -1 } },
-      { $group: { _id: '$student_id', risk_level: { $first: '$risk_level' } } },
-    ]);
+    const riskPipeline: any[] = [];
+    if (Object.keys(dateFilter).length > 0) {
+      riskPipeline.push({ $match: dateFilter });
+    }
+    riskPipeline.push({ $sort: { prediction_date: -1 } as any });
+    riskPipeline.push({ $group: { _id: '$student_id', risk_level: { $first: '$risk_level' } } });
+    
+    const latestRisks = await RiskScore.aggregate(riskPipeline);
     const counts = { High: 0, Medium: 0, Low: 0 };
     latestRisks.forEach((r) => {
       counts[r.risk_level as 'High' | 'Medium' | 'Low']++;
@@ -31,61 +63,189 @@ router.get('/overview', async (_req: Request, res: Response) => {
       { name: 'High Risk', value: Math.round((counts.High / totalRated) * 100), color: '#dc2626' },
     ];
 
-    // Risk trend by month
-    const trendAgg = await RiskScore.aggregate([
-      {
+    // Risk trend with granularity support
+    let trendGroupStage;
+    if (riskTrendGranularity === 'daily') {
+      trendGroupStage = {
         $group: {
-          _id: { $month: '$prediction_date' },
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$prediction_date',
+            },
+          },
           high: { $sum: { $cond: [{ $eq: ['$risk_level', 'High'] }, 1, 0] } },
           medium: { $sum: { $cond: [{ $eq: ['$risk_level', 'Medium'] }, 1, 0] } },
           low: { $sum: { $cond: [{ $eq: ['$risk_level', 'Low'] }, 1, 0] } },
         },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-    const riskTrend = trendAgg.map((t) => ({
-      month: MONTHS[t._id - 1],
-      high: t.high,
-      medium: t.medium,
-      low: t.low,
-    }));
-
-    // Intervention effectiveness by type
-    const interventionAgg = await Intervention.aggregate([
-      {
+      };
+    } else if (riskTrendGranularity === 'weekly') {
+      trendGroupStage = {
         $group: {
-          _id: '$intervention_type',
-          total: { $sum: 1 },
-          completed: { $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] } },
+          _id: {
+            $dateToString: {
+              format: '%Y-%U',
+              date: '$prediction_date',
+            },
+          },
+          high: { $sum: { $cond: [{ $eq: ['$risk_level', 'High'] }, 1, 0] } },
+          medium: { $sum: { $cond: [{ $eq: ['$risk_level', 'Medium'] }, 1, 0] } },
+          low: { $sum: { $cond: [{ $eq: ['$risk_level', 'Low'] }, 1, 0] } },
         },
+      };
+    } else {
+      // monthly (default) - include year in grouping to show data across multiple years
+      trendGroupStage = {
+        $group: {
+          _id: {
+            year: { $year: '$prediction_date' },
+            month: { $month: '$prediction_date' }
+          },
+          high: { $sum: { $cond: [{ $eq: ['$risk_level', 'High'] }, 1, 0] } },
+          medium: { $sum: { $cond: [{ $eq: ['$risk_level', 'Medium'] }, 1, 0] } },
+          low: { $sum: { $cond: [{ $eq: ['$risk_level', 'Low'] }, 1, 0] } },
+        },
+      };
+    }
+
+    const trendPipeline: any[] = [];
+    if (Object.keys(dateFilter).length > 0) {
+      trendPipeline.push({ $match: dateFilter });
+    }
+    trendPipeline.push(trendGroupStage);
+    trendPipeline.push({ $sort: { _id: 1 } as any });
+    
+    const trendAgg = await RiskScore.aggregate(trendPipeline);
+    const riskTrend = trendAgg.map((t) => {
+      if (riskTrendGranularity === 'monthly') {
+        // Handle the new structure with year and month
+        if (t._id && typeof t._id === 'object' && 'year' in t._id && 'month' in t._id) {
+          return {
+            month: `${MONTHS[t._id.month - 1]} ${t._id.year}`,
+            high: t.high,
+            medium: t.medium,
+            low: t.low,
+          };
+        }
+        // Fallback for old structure
+        return {
+          month: MONTHS[t._id - 1],
+          high: t.high,
+          medium: t.medium,
+          low: t.low,
+        };
+      } else {
+        return {
+          month: t._id,
+          high: t.high,
+          medium: t.medium,
+          low: t.low,
+        };
+      }
+    });
+
+    // Intervention effectiveness by type with granularity
+    const interventionPipeline: any[] = [];
+    if (Object.keys(dateFilter).length > 0) {
+      interventionPipeline.push({ $match: { start_date: dateFilter.prediction_date } });
+    }
+    interventionPipeline.push({
+      $group: {
+        _id: '$intervention_type',
+        total: { $sum: 1 },
+        completed: { $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] } },
       },
-    ]);
+    });
+    
+    const interventionAgg = await Intervention.aggregate(interventionPipeline);
     const interventionEffectiveness = interventionAgg.map((i) => ({
       type: i._id || 'Other',
       rate: i.total ? Math.round((i.completed / i.total) * 100) : 0,
     }));
 
-    // Attendance pattern by weekday
-    const attendanceAgg = await Attendance.aggregate([
-      {
+    // Attendance pattern with granularity
+    const attendancePipeline: any[] = [];
+    if (Object.keys(dateFilter).length > 0) {
+      attendancePipeline.push({ $match: { attendance_date: dateFilter.prediction_date } });
+    }
+    
+    let attendanceGroupStage;
+    if (attendanceGranularity === 'daily') {
+      attendanceGroupStage = {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$attendance_date',
+            },
+          },
+          present: { $sum: { $cond: ['$present', 1, 0] } },
+          total: { $sum: 1 },
+        },
+      };
+    } else if (attendanceGranularity === 'monthly') {
+      attendanceGroupStage = {
+        $group: {
+          _id: {
+            year: { $year: '$attendance_date' },
+            month: { $month: '$attendance_date' }
+          },
+          present: { $sum: { $cond: ['$present', 1, 0] } },
+          total: { $sum: 1 },
+        },
+      };
+    } else {
+      // weekly (default)
+      attendanceGroupStage = {
         $group: {
           _id: { $dayOfWeek: '$attendance_date' },
           present: { $sum: { $cond: ['$present', 1, 0] } },
           total: { $sum: 1 },
         },
-      },
-      { $sort: { _id: 1 } },
-    ]);
-    const attendancePattern = attendanceAgg
-      .filter((a) => a._id >= 2 && a._id <= 6)
-      .map((a) => ({
-        day: WEEKDAYS[a._id - 1],
-        attendance: a.total ? Math.round((a.present / a.total) * 100) : 0,
-      }));
+      };
+    }
+    
+    attendancePipeline.push(attendanceGroupStage);
+    attendancePipeline.push({ $sort: { _id: 1 } as any });
+    
+    const attendanceAgg = await Attendance.aggregate(attendancePipeline);
+    const attendancePattern = attendanceAgg.map((a) => {
+      if (attendanceGranularity === 'weekly') {
+        if (a._id >= 2 && a._id <= 6) {
+          return {
+            day: WEEKDAYS[a._id - 1],
+            attendance: a.total ? Math.round((a.present / a.total) * 100) : 0,
+          };
+        }
+        return null;
+      } else if (attendanceGranularity === 'monthly') {
+        // Handle the new structure with year and month
+        if (a._id && typeof a._id === 'object' && 'year' in a._id && 'month' in a._id) {
+          return {
+            day: `${MONTHS[a._id.month - 1]} ${a._id.year}`,
+            attendance: a.total ? Math.round((a.present / a.total) * 100) : 0,
+          };
+        }
+        // Fallback for old structure
+        return {
+          day: MONTHS[a._id - 1],
+          attendance: a.total ? Math.round((a.present / a.total) * 100) : 0,
+        };
+      } else {
+        return {
+          day: a._id,
+          attendance: a.total ? Math.round((a.present / a.total) * 100) : 0,
+        };
+      }
+    }).filter(Boolean);
 
     // Summary metrics
-    const totalInterventions = await Intervention.countDocuments();
-    const completed = await Intervention.countDocuments({ status: 'Completed' });
+    const interventionFilter: any = {};
+    if (Object.keys(dateFilter).length > 0) {
+      interventionFilter.start_date = dateFilter.prediction_date;
+    }
+    const totalInterventions = await Intervention.countDocuments(interventionFilter);
+    const completed = await Intervention.countDocuments({ ...interventionFilter, status: 'Completed' });
     const successRate = totalInterventions ? Math.round((completed / totalInterventions) * 100) : 0;
     const preventionRate = totalStudents
       ? Math.round(((counts.Low) / totalRated) * 100)

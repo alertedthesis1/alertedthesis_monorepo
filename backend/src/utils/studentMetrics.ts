@@ -30,7 +30,6 @@ export interface StudentSummary {
   mathematicsGrade?: number;
   englishGrade?: number;
   scienceGrade?: number;
-  gpa?: number;
   lastActive: string;
   interventions: number;
   keyConcerns: string[];
@@ -129,7 +128,6 @@ export async function buildStudentSummary(student: IStudent, term?: string, year
   const present = attendanceResult.present;
   const attendance = totalAtt ? Math.round((present / totalAtt) * 100) : 0;
 
-  const gpa = academic?.gpa ?? 0;
   const generalAverage = academic?.overall_average ?? 0;
   const mathematicsGrade = academic?.mathematics_grade;
   const englishGrade = academic?.english_grade;
@@ -141,8 +139,7 @@ export async function buildStudentSummary(student: IStudent, term?: string, year
 
   const keyConcerns: string[] = [];
   if (totalAtt && attendance < 75) keyConcerns.push('Low attendance');
-  if (academic && gpa < 2.5) keyConcerns.push('Declining grades');
-  if (academic && (academic.major_subjects_failed ?? 0) > 0) keyConcerns.push('Failing major subjects');
+  if (academic && generalAverage < 75) keyConcerns.push('Declining grades');
   if (behaviorReports.some((b) => b.severity === 'High' || b.severity === 'Critical'))
     keyConcerns.push('Behavioral incidents');
 
@@ -185,7 +182,6 @@ export async function buildStudentSummary(student: IStudent, term?: string, year
     mathematicsGrade,
     englishGrade,
     scienceGrade,
-    gpa,
     lastActive: timeAgo(student.updatedAt),
     interventions: interventionCount,
     keyConcerns,

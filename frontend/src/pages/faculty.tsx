@@ -19,6 +19,10 @@ import {
   X,
   CheckCircle,
   XCircle,
+  Phone,
+  Mail,
+  MapPin,
+  UserCheck,
 } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import RiskBadge from '@/components/ui/RiskBadge';
@@ -26,6 +30,7 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import EarlyWarningBadge from '@/components/ui/EarlyWarningBadge';
 import { fetchStudents, StudentSummary, fetchDashboardStats, DashboardStats, fetchEarlyWarningBatchPredictions, EarlyWarningPrediction, recordAttendance, getStudentAttendance, getStudentAcademicRecords, recalculateAllRiskScores } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
 import axios from 'axios';
 
 const TABS = ['Dashboard', 'Attendance', 'Academic Records'];
@@ -36,6 +41,7 @@ const client = axios.create({ baseURL: API_URL, timeout: 8000 });
 export default function Faculty() {
   const router = useRouter();
   const { user } = useAuth();
+  const { success, error, warning } = useNotification();
   const [tab, setTab] = useState('Dashboard');
   const [query, setQuery] = useState('');
   const [students, setStudents] = useState<StudentSummary[]>([]);
@@ -60,7 +66,7 @@ export default function Faculty() {
   const [showAddAcademicRecordModal, setShowAddAcademicRecordModal] = useState(false);
   const [showEditAcademicRecordModal, setShowEditAcademicRecordModal] = useState(false);
   const [editingAcademicRecord, setEditingAcademicRecord] = useState<any>(null);
-  const [academicRecordForm, setAcademicRecordForm] = useState({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '', gpa: '', major_subjects_enrolled: '', major_subjects_passed: '', major_subjects_failed: '', total_units: '' });
+  const [academicRecordForm, setAcademicRecordForm] = useState({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '' });
   const [selectedTerm, setSelectedTerm] = useState<string>('');
   const [selectedYear, setSelectedYear] = useState<string>('');
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -69,36 +75,27 @@ export default function Faculty() {
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
 
-  // Calculate overall average and GPA automatically when subject grades change
+  // Calculate overall average automatically when subject grades change
   const calculateAcademicMetrics = (math: string, english: string, science: string) => {
     const mathGrade = parseFloat(math) || 0;
     const englishGrade = parseFloat(english) || 0;
     const scienceGrade = parseFloat(science) || 0;
-    
+
     if (mathGrade > 0 || englishGrade > 0 || scienceGrade > 0) {
       const overallAverage = ((mathGrade + englishGrade + scienceGrade) / 3).toFixed(1);
-      // Convert to GPA (4.0 scale): 90-100 = 4.0, 80-89 = 3.0-3.9, 70-79 = 2.0-2.9, 60-69 = 1.0-1.9, below 60 = 0.0
-      const avgGrade = parseFloat(overallAverage);
-      let gpa = 0;
-      if (avgGrade >= 90) gpa = 4.0;
-      else if (avgGrade >= 80) gpa = 3.0 + (avgGrade - 80) / 10;
-      else if (avgGrade >= 70) gpa = 2.0 + (avgGrade - 70) / 10;
-      else if (avgGrade >= 60) gpa = 1.0 + (avgGrade - 60) / 10;
-      else gpa = 0.0;
-      
-      return { overall_average: overallAverage, gpa: gpa.toFixed(2) };
+      return { overall_average: overallAverage };
     }
-    return { overall_average: '', gpa: '' };
+    return { overall_average: '' };
   };
 
   const handleSubjectGradeChange = (field: string, value: string) => {
     const updatedForm = { ...academicRecordForm, [field]: value };
-    const { overall_average, gpa } = calculateAcademicMetrics(
+    const { overall_average } = calculateAcademicMetrics(
       updatedForm.mathematics_grade,
       updatedForm.english_grade,
       updatedForm.science_grade
     );
-    setAcademicRecordForm({ ...updatedForm, overall_average, gpa });
+    setAcademicRecordForm({ ...updatedForm, overall_average });
   };
 
   useEffect(() => {
@@ -140,6 +137,49 @@ export default function Faculty() {
           }).catch((err: any) => {
             console.error('Error fetching early warnings:', err);
           });
+
+          // Check for consecutive absences
+          client.post('/attendance/batch', { student_ids: studentIds, attendance_date: todayDate })
+            .then(({ data }) => {
+              if (active && data.data) {
+                const attendanceHistory: Record<string, any[]> = {};
+                data.data.forEach((record: any) => {
+                  if (!attendanceHistory[record.student_id]) {
+                    attendanceHistory[record.student_id] = [];
+                  }
+                  attendanceHistory[record.student_id].push(record);
+                });
+
+                // Check for 5+ consecutive absences
+                Object.entries(attendanceHistory).forEach(([studentId, records]) => {
+                  const sortedRecords = records.sort((a, b) => 
+                    new Date(a.attendance_date).getTime() - new Date(b.attendance_date).getTime()
+                  );
+                  
+                  let consecutiveAbsences = 0;
+                  const student = studentsData.data.find((s: any) => s.id === studentId);
+                  
+                  for (let i = sortedRecords.length - 1; i >= 0; i--) {
+                    if (sortedRecords[i].present === false) {
+                      consecutiveAbsences++;
+                      if (consecutiveAbsences >= 5) {
+                        if (student) {
+                          warning(
+                            'Consecutive Absences Alert',
+                            `${student.firstName} ${student.lastName} has ${consecutiveAbsences} consecutive absences`
+                          );
+                        }
+                        break;
+                      }
+                    } else {
+                      consecutiveAbsences = 0;
+                    }
+                  }
+                });
+              }
+            }).catch((err: any) => {
+              console.error('Error checking consecutive absences:', err);
+            });
         }
       }
     });
@@ -151,7 +191,7 @@ export default function Faculty() {
   // Recalculate risk scores when term/year filters change
   const handleRecalculateRiskScores = async () => {
     if (!selectedTerm && !selectedYear) {
-      alert('Please select a term or year to recalculate risk scores');
+      warning('Filters Required', 'Please select a term or year to recalculate risk scores');
       return;
     }
     
@@ -176,9 +216,9 @@ export default function Faculty() {
         });
         setEarlyWarnings(predictionsMap);
       }
-    } catch (error) {
-      console.error('Error recalculating risk scores:', error);
-      alert('Failed to recalculate risk scores. Please try again.');
+    } catch (err) {
+      console.error('Error recalculating risk scores:', err);
+      error('Recalculation Failed', 'Failed to recalculate risk scores. Please try again.');
     } finally {
       setIsRecalculating(false);
     }
@@ -495,10 +535,7 @@ export default function Faculty() {
                       <span className="text-gray-500">Science:</span>
                       <span className="text-gray-700">{s.scienceGrade || '-'}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">GPA:</span>
-                      <span className="text-gray-700">{s.gpa || '-'}</span>
-                    </div>
+
                   </div>
                 </div>
               );
@@ -852,10 +889,7 @@ export default function Faculty() {
                         <span className="text-gray-500">Science:</span>
                         <span className="text-gray-700">{s.scienceGrade || '-'}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">GPA:</span>
-                        <span className="text-gray-700">{s.gpa || '-'}</span>
-                      </div>
+
                     </div>
                   </div>
                 ))}
@@ -892,11 +926,6 @@ export default function Faculty() {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Science</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overall Avg</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GPA</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Enrolled</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Passed</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Failed</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Units</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
@@ -917,11 +946,6 @@ export default function Faculty() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.english_grade || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.science_grade || '-'}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.overall_average || '-'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.gpa}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.major_subjects_enrolled}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.major_subjects_passed}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.major_subjects_failed}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.total_units}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                           <div className="flex items-center gap-2">
                             <button
@@ -934,11 +958,6 @@ export default function Faculty() {
                                   english_grade: record.english_grade?.toString() || '',
                                   science_grade: record.science_grade?.toString() || '',
                                   overall_average: record.overall_average?.toString() || '',
-                                  gpa: record.gpa.toString(),
-                                  major_subjects_enrolled: record.major_subjects_enrolled.toString(),
-                                  major_subjects_passed: record.major_subjects_passed.toString(),
-                                  major_subjects_failed: record.major_subjects_failed.toString(),
-                                  total_units: record.total_units.toString(),
                                 });
                                 setShowEditAcademicRecordModal(true);
                               }}
@@ -1065,58 +1084,6 @@ export default function Faculty() {
                     className="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GPA</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4"
-                    value={academicRecordForm.gpa}
-                    readOnly
-                    className="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Enrolled</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_enrolled}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_enrolled: e.target.value })}
-                    placeholder="e.g., 15"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Passed</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_passed}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_passed: e.target.value })}
-                    placeholder="e.g., 14"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Failed</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_failed}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_failed: e.target.value })}
-                    placeholder="e.g., 1"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Units</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.total_units}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, total_units: e.target.value })}
-                    placeholder="e.g., 45"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
@@ -1136,15 +1103,11 @@ export default function Faculty() {
                         mathematics_grade: parseFloat(academicRecordForm.mathematics_grade),
                         english_grade: parseFloat(academicRecordForm.english_grade),
                         science_grade: parseFloat(academicRecordForm.science_grade),
-                        major_subjects_enrolled: parseInt(academicRecordForm.major_subjects_enrolled),
-                        major_subjects_passed: parseInt(academicRecordForm.major_subjects_passed),
-                        major_subjects_failed: parseInt(academicRecordForm.major_subjects_failed),
-                        total_units: parseInt(academicRecordForm.total_units),
                       });
                       const academicRecords = await getStudentAcademicRecords(selectedStudent.id);
                       setStudentAcademicRecords({ ...studentAcademicRecords, [selectedStudent.id]: academicRecords });
                       setShowAddAcademicRecordModal(false);
-                      setAcademicRecordForm({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '', gpa: '', major_subjects_enrolled: '', major_subjects_passed: '', major_subjects_failed: '', total_units: '' });
+                      setAcademicRecordForm({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '' });
                       setAlertModal({ show: true, message: 'Academic record added successfully', type: 'success' });
                     } catch (err) {
                       console.error('Error adding academic record:', err);
@@ -1245,58 +1208,6 @@ export default function Faculty() {
                     className="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">GPA</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4"
-                    value={academicRecordForm.gpa}
-                    readOnly
-                    className="w-full rounded-lg border border-gray-200 bg-gray-100 px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Enrolled</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_enrolled}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_enrolled: e.target.value })}
-                    placeholder="e.g., 15"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Passed</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_passed}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_passed: e.target.value })}
-                    placeholder="e.g., 14"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Major Subjects Failed</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.major_subjects_failed}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, major_subjects_failed: e.target.value })}
-                    placeholder="e.g., 1"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Units</label>
-                  <input
-                    type="number"
-                    value={academicRecordForm.total_units}
-                    onChange={(e) => setAcademicRecordForm({ ...academicRecordForm, total_units: e.target.value })}
-                    placeholder="e.g., 45"
-                    className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  />
-                </div>
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
@@ -1315,16 +1226,12 @@ export default function Faculty() {
                         mathematics_grade: parseFloat(academicRecordForm.mathematics_grade),
                         english_grade: parseFloat(academicRecordForm.english_grade),
                         science_grade: parseFloat(academicRecordForm.science_grade),
-                        major_subjects_enrolled: parseInt(academicRecordForm.major_subjects_enrolled),
-                        major_subjects_passed: parseInt(academicRecordForm.major_subjects_passed),
-                        major_subjects_failed: parseInt(academicRecordForm.major_subjects_failed),
-                        total_units: parseInt(academicRecordForm.total_units),
                       });
                       const academicRecords = await getStudentAcademicRecords(selectedStudent.id);
                       setStudentAcademicRecords({ ...studentAcademicRecords, [selectedStudent.id]: academicRecords });
                       setShowEditAcademicRecordModal(false);
                       setEditingAcademicRecord(null);
-                      setAcademicRecordForm({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '', gpa: '', major_subjects_enrolled: '', major_subjects_passed: '', major_subjects_failed: '', total_units: '' });
+                      setAcademicRecordForm({ term: '', year: '', mathematics_grade: '', english_grade: '', science_grade: '', overall_average: '' });
                       setAlertModal({ show: true, message: 'Academic record updated successfully', type: 'success' });
                     } catch (err) {
                       console.error('Error updating academic record:', err);
@@ -1342,7 +1249,7 @@ export default function Faculty() {
 
         {showStudentInfoModal && selectedStudent && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="max-w-2xl w-full rounded-lg bg-white p-8 max-h-[90vh] overflow-y-auto">
+            <div className="max-w-3xl w-full rounded-lg bg-white p-8 max-h-[90vh] overflow-y-auto">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-bold text-gray-900">Student Profile</h3>
                 <button onClick={() => setShowStudentInfoModal(false)} className="text-gray-400 hover:text-gray-600">
@@ -1351,42 +1258,81 @@ export default function Faculty() {
               </div>
 
               <div className="flex items-center gap-6 mb-8">
-                <div className="h-24 w-24 rounded-full bg-gray-200 flex items-center justify-center">
-                  <div className="text-3xl font-semibold text-gray-600">
+                <div className="h-32 w-32 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden border-4 border-gray-100">
+                  {/* Student avatar - placeholder for now, could be replaced with actual image */}
+                  <div className="text-4xl font-semibold text-gray-600 bg-gray-300 h-full w-full flex items-center justify-center">
                     {selectedStudent.firstName[0]}{selectedStudent.lastName[0]}
                   </div>
                 </div>
-                <div>
+                <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</h2>
                   <p className="text-gray-600">Student ID: {selectedStudent.student_id}</p>
-                  <p className="text-gray-600">Grade: {selectedStudent.grade}</p>
+                  <p className="text-gray-600">Grade: {selectedStudent.grade} - Section: {selectedStudent.section}</p>
+                  <p className="text-gray-600">Status: {selectedStudent.status || 'Active'}</p>
+                  <div className="mt-2">
+                    <RiskBadge level={selectedStudent.riskLevel} label={selectedStudent.riskLevel} />
+                  </div>
                 </div>
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Personal Information</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-xs text-gray-500">Full Name</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedStudent.firstName} {selectedStudent.lastName}</p>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <UserCheck size={16} /> Contact Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-2">
+                      <Mail size={16} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500">Email</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedStudent.email || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Student ID</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedStudent.student_id}</p>
+                    <div className="flex items-start gap-2">
+                      <Phone size={16} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500">Phone Number</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedStudent.phone || 'N/A'}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Grade Level</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedStudent.grade}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Attendance Rate</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedStudent.attendance}%</p>
+                    <div className="md:col-span-2 flex items-start gap-2">
+                      <MapPin size={16} className="text-gray-400 mt-0.5" />
+                      <div>
+                        <p className="text-xs text-gray-500">Address</p>
+                        <p className="text-sm font-medium text-gray-900">{selectedStudent.address || 'N/A'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
+
                 <div>
-                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Academic Information</h4>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <UserCheck size={16} /> Guardian Information
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Guardian Name</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.guardianName || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Guardian Relation</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.guardianRelation || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Guardian Phone</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.guardianPhone || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Enrollment Date</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.enrolledDate || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <FileText size={16} /> Academic Information
+                  </h4>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-gray-500">Mathematics Grade</p>
@@ -1401,11 +1347,60 @@ export default function Faculty() {
                       <p className="text-sm font-medium text-gray-900">{selectedStudent.scienceGrade || '-'}</p>
                     </div>
                     <div>
-                      <p className="text-xs text-gray-500">GPA</p>
-                      <p className="text-sm font-medium text-gray-900">{selectedStudent.gpa || '-'}</p>
+                      <p className="text-xs text-gray-500">General Average</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.generalAverage || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Attendance Rate</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.attendance}%</p>
                     </div>
                   </div>
                 </div>
+
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <AlertTriangle size={16} /> Risk & Intervention Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500">Risk Level</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.riskLevel}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Risk Score</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.riskScore}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Confidence</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.confidence}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Interventions</p>
+                      <p className="text-sm font-medium text-gray-900">{selectedStudent.interventions}</p>
+                    </div>
+                  </div>
+                  {selectedStudent.keyConcerns && selectedStudent.keyConcerns.length > 0 && (
+                    <div className="mt-3">
+                      <p className="text-xs text-gray-500 mb-2">Key Concerns:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedStudent.keyConcerns.map((concern, index) => (
+                          <span key={index} className="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs text-gray-600">
+                            {concern}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowStudentInfoModal(false)}
+                  className="rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50"
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

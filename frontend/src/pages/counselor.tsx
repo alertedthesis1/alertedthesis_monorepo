@@ -25,6 +25,7 @@ import ProgressBar from '@/components/ui/ProgressBar';
 import EarlyWarningBadge from '@/components/ui/EarlyWarningBadge';
 import { fetchStudents, StudentSummary, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, Schedule, fetchInterventions, Intervention, fetchTasks, createTask, updateTask, deleteTask, Task, fetchReports, Report, fetchDashboardStats, DashboardStats, generateReport, downloadReport, fetchEarlyWarningPrediction, fetchEarlyWarningBatchPredictions, EarlyWarningPrediction, recalculateAllRiskScores } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useNotification } from '@/context/NotificationContext';
 
 const TABS = ['My Caseload', 'Schedule', 'Interventions', 'Tasks', 'Reports'];
 
@@ -59,6 +60,7 @@ const toDisplayType = (databaseValue: string): string => {
 export default function Counselor() {
   const router = useRouter();
   const { user } = useAuth();
+  const { success, error, warning } = useNotification();
   const [tab, setTab] = useState('My Caseload');
   const [query, setQuery] = useState('');
   const [caseload, setCaseload] = useState<StudentSummary[]>([]);
@@ -112,10 +114,10 @@ export default function Counselor() {
         report_type: 'Attendance',
         student_id: '',
       });
-      alert('Report generated successfully!');
+      success('Report Generated', 'Report generated successfully!');
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      error('Report Generation Failed', 'Failed to generate report');
     } finally {
       setGeneratingReport(false);
     }
@@ -154,9 +156,10 @@ export default function Counselor() {
   const handleDownloadReport = async (reportId: string, reportTitle: string) => {
     try {
       await downloadReport(reportId, reportTitle);
+      success('Report Downloaded', 'Report downloaded successfully!');
     } catch (error) {
       console.error('Error downloading report:', error);
-      alert('Failed to download report');
+      error('Download Failed', 'Failed to download report');
     }
   };
 
@@ -218,7 +221,7 @@ export default function Counselor() {
   // Recalculate risk scores when term/year filters change
   const handleRecalculateRiskScores = async () => {
     if (!selectedTerm && !selectedYear) {
-      alert('Please select a term or year to recalculate risk scores');
+      warning('Filters Required', 'Please select a term or year to recalculate risk scores');
       return;
     }
     
@@ -245,7 +248,7 @@ export default function Counselor() {
       }
     } catch (error) {
       console.error('Error recalculating risk scores:', error);
-      alert('Failed to recalculate risk scores. Please try again.');
+      error('Recalculation Failed', 'Failed to recalculate risk scores. Please try again.');
     } finally {
       setIsRecalculating(false);
     }
@@ -320,7 +323,7 @@ export default function Counselor() {
       });
       const updatedSchedules = await fetchSchedules(user?.email);
       setSchedules(updatedSchedules);
-      alert('Schedule created successfully!');
+      success('Schedule Created', 'Schedule created successfully!');
       setShowAppointmentModal(false);
       setAppointmentForm({
         student_id: '',
@@ -335,7 +338,7 @@ export default function Counselor() {
       setShowStudentDropdown(false);
     } catch (err) {
       console.error(err);
-      alert('Failed to create schedule');
+      error('Schedule Creation Failed', 'Failed to create schedule');
     } finally {
       setAddingAppointment(false);
     }
@@ -354,7 +357,7 @@ export default function Counselor() {
       });
       const updatedSchedules = await fetchSchedules(user?.email);
       setSchedules(updatedSchedules);
-      alert('Schedule updated successfully!');
+      success('Schedule Updated', 'Schedule updated successfully!');
       setShowEditModal(false);
       setEditingSchedule(null);
       setAppointmentForm({
@@ -368,7 +371,7 @@ export default function Counselor() {
       });
     } catch (err) {
       console.error(err);
-      alert('Failed to update schedule');
+      error('Schedule Update Failed', 'Failed to update schedule');
     } finally {
       setAddingAppointment(false);
     }
@@ -380,10 +383,10 @@ export default function Counselor() {
       await deleteSchedule(id);
       const updatedSchedules = await fetchSchedules(user?.email);
       setSchedules(updatedSchedules);
-      alert('Schedule deleted successfully!');
+      success('Schedule Deleted', 'Schedule deleted successfully!');
     } catch (err) {
       console.error(err);
-      alert('Failed to delete schedule');
+      error('Schedule Deletion Failed', 'Failed to delete schedule');
     }
   };
 
@@ -392,13 +395,13 @@ export default function Counselor() {
     try {
       if (editingTask) {
         await updateTask(editingTask._id, taskForm);
-        alert('Task updated successfully!');
+        success('Task Updated', 'Task updated successfully!');
       } else {
         await createTask({
           ...taskForm,
           created_by: user?.email,
         });
-        alert('Task created successfully!');
+        success('Task Created', 'Task created successfully!');
       }
       const updatedTasks = await fetchTasks();
       setTasks(updatedTasks);

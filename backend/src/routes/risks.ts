@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { RiskScore } from '../models/RiskScore';
 import { Student } from '../models/Student';
-import { calculateRiskScore, updateRiskScoreForStudent } from '../services/riskCalculationService';
+import { calculateRiskScore, updateRiskScoreForStudent, calculateAllHistoricalRiskScores } from '../services/riskCalculationService';
 
 const router = Router();
 
@@ -191,6 +191,25 @@ router.post('/recalculate/:studentId', async (req: Request, res: Response) => {
   }
 });
 
+// Calculate historical risk scores for all students across all terms and years
+router.post('/calculate-historical', async (req: Request, res: Response) => {
+  try {
+    const { yearsBack } = req.body;
+    const yearsToCalculate = yearsBack ? parseInt(yearsBack) : 2;
+
+    console.log('Starting historical risk score calculation...');
+    const result = await calculateAllHistoricalRiskScores(yearsToCalculate);
+
+    res.json({
+      message: 'Historical risk scores calculated successfully',
+      ...result,
+    });
+  } catch (error) {
+    console.error('Error calculating historical risk scores:', error);
+    res.status(500).json({ error: 'Failed to calculate historical risk scores' });
+  }
+});
+
 // Seed high-risk students for testing
 router.post('/seed-high-risk', async (req: Request, res: Response) => {
   try {
@@ -312,19 +331,12 @@ router.post('/seed-high-risk', async (req: Request, res: Response) => {
           const scienceGrade = Math.floor(Math.random() * 10) + 60; // 60-69
           const overallAverage = (mathGrade + englishGrade + scienceGrade) / 3;
 
-          // Calculate GPA based on average (60-69 range = 1.0-1.9 GPA)
-          const gpa = 1.0 + ((overallAverage - 60) / 10) * 0.9;
-
           // Generate major subject grades array
           const majorSubjectGrades = [
             { subject: 'Mathematics', grade: mathGrade, date: new Date(year, term === '1st Term' ? 9 : term === '2nd Term' ? 11 : 4, 1) },
             { subject: 'English', grade: englishGrade, date: new Date(year, term === '1st Term' ? 9 : term === '2nd Term' ? 11 : 4, 1) },
             { subject: 'Science', grade: scienceGrade, date: new Date(year, term === '1st Term' ? 9 : term === '2nd Term' ? 11 : 4, 1) },
           ];
-
-          // Calculate major subjects enrolled/passed/failed (3 major subjects)
-          const passedSubjects = [mathGrade, englishGrade, scienceGrade].filter(g => g >= 75).length;
-          const failedSubjects = 3 - passedSubjects;
 
           const academicRecord = await AcademicRecord.create({
             student_id: student._id,
@@ -334,14 +346,9 @@ router.post('/seed-high-risk', async (req: Request, res: Response) => {
             english_grade: englishGrade,
             science_grade: scienceGrade,
             overall_average: parseFloat(overallAverage.toFixed(1)),
-            gpa: parseFloat(gpa.toFixed(2)),
-            major_subjects_enrolled: 3,
-            major_subjects_passed: passedSubjects,
-            major_subjects_failed: failedSubjects,
-            total_units: 9, // 3 major subjects x 3 units each
             major_subject_grades: majorSubjectGrades,
           });
-          console.log(`✅ Created academic record for ${student.first_name} - ${term} ${year}: Avg ${overallAverage.toFixed(1)}, GPA ${gpa.toFixed(2)}`);
+          console.log(`✅ Created academic record for ${student.first_name} - ${term} ${year}: Avg ${overallAverage.toFixed(1)}`);
         }
       }
 

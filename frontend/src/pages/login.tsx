@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { ShieldCheck, UserCog, HeartHandshake, Eye, EyeOff } from 'lucide-react';
-import { useAuth, Role, DEMO_ACCOUNTS } from '@/context/AuthContext';
+import { useAuth, Role } from '@/context/AuthContext';
 
 const ROLES: { key: Role; label: string; icon: typeof UserCog; desc: string }[] = [
   { key: 'admin', label: 'Admin', icon: UserCog, desc: 'System & user management' },
@@ -33,15 +33,6 @@ export default function Login() {
       router.push(LANDING[role]);
     } else {
       setError(res.error || 'Login failed.');
-    }
-  };
-
-  const fillDemo = () => {
-    const demo = DEMO_ACCOUNTS.find((d) => d.role === role);
-    if (demo) {
-      setEmail(demo.email);
-      setPassword(demo.password);
-      setError('');
     }
   };
 
@@ -161,20 +152,6 @@ export default function Login() {
                 Sign in as {ROLES.find((r) => r.key === role)?.label}
               </button>
             </form>
-
-            <button
-              onClick={fillDemo}
-              className="mt-3 w-full rounded-lg border border-gray-200 bg-white py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
-            >
-              Use demo {role} credentials
-            </button>
-
-            {/* <div className="mt-6 rounded-lg bg-gray-100 p-3 text-xs text-gray-500">
-              <p className="font-semibold text-gray-600">Demo accounts</p>
-              <p className="mt-1">admin@sjc.edu.ph / admin123</p>
-              <p>counselor@sjc.edu.ph / counselor123</p>
-              <p>faculty@sjc.edu.ph / faculty123</p>
-            </div> */}
           </div>
         </div>
       </div>

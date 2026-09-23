@@ -3,7 +3,9 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import '../styles/globals.css';
 import { AuthProvider, useAuth, Role } from '@/context/AuthContext';
+import { NotificationProvider } from '@/context/NotificationContext';
 import AppHeader from '@/components/shared/AppHeader';
+import NotificationContainer from '@/components/ui/NotificationContainer';
 
 const PUBLIC_ROUTES = ['/login', '/'];
 
@@ -70,12 +72,15 @@ function Guard({ children }: { children: React.ReactNode }) {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <AuthProvider>
-      <Guard>
-        <main className="min-h-screen bg-white">
-          <Component {...pageProps} />
-        </main>
-      </Guard>
-    </AuthProvider>
+    <NotificationProvider>
+      <AuthProvider>
+        <Guard>
+          <main className="min-h-screen bg-white">
+            <Component {...pageProps} />
+          </main>
+          <NotificationContainer />
+        </Guard>
+      </AuthProvider>
+    </NotificationProvider>
   );
 }

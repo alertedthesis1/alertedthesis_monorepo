@@ -12,6 +12,7 @@
     "seed": "ts-node src/utils/seed.ts",
     "seed-high-risk": "ts-node src/seedHighRiskStudents.ts",
     "seed-attendance-all": "ts-node src/seedAttendanceForAllTerms.ts",
+    "seed-attendance-sept1": "ts-node src/seedAttendanceFromSept1.ts",
     "clear-data": "ts-node src/clearExistingData.ts",
     "migrate": "ts-node migrations/run.ts",
     "recalculate-risks": "ts-node src/recalculateRiskScores.ts"

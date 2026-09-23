@@ -23,6 +23,12 @@ export interface StudentSummary extends CaseloadStudent {
   yearLevel?: number;
   program?: string;
   status?: 'Active' | 'Graduated' | 'Suspended' | 'Dropped' | 'On Leave';
+  phone?: string;
+  address?: string;
+  guardianName?: string;
+  guardianRelation?: string;
+  guardianPhone?: string;
+  enrolledDate?: string;
 }
 
 export interface StudentDetail extends StudentSummary {
@@ -193,6 +199,7 @@ export async function fetchStudents(facultyEmail?: string, page = 1, limit = 20,
           lastSession: s.lastSession,
           nextAppointment: s.nextAppointment,
           appointmentScheduled: s.appointmentScheduled,
+          confidence: s.confidence,
         })),
         pagination: data.pagination || { page, limit, total: 0, totalPages: 0 }
       };
@@ -309,9 +316,15 @@ export async function deleteStudent(id: string) {
 
 // Fetch analytics overview data for the analytics dashboard
 // Returns risk trends, distribution, intervention effectiveness, and attendance patterns
-export async function fetchAnalytics(): Promise<AnalyticsOverview> {
+export async function fetchAnalytics(term?: string, year?: string, riskTrendGranularity?: string, interventionGranularity?: string, attendanceGranularity?: string): Promise<AnalyticsOverview> {
   try {
-    const { data } = await client.get<AnalyticsOverview>('/analytics/overview');
+    const params: any = {};
+    if (term) params.term = term;
+    if (year) params.year = year;
+    if (riskTrendGranularity) params.riskTrendGranularity = riskTrendGranularity;
+    if (interventionGranularity) params.interventionGranularity = interventionGranularity;
+    if (attendanceGranularity) params.attendanceGranularity = attendanceGranularity;
+    const { data } = await client.get<AnalyticsOverview>('/analytics/overview', { params });
     return data;
   } catch (error) {
     console.error('Error fetching analytics:', error);
@@ -938,5 +951,158 @@ export async function fetchInsights(): Promise<any[]> {
   } catch (error) {
     console.error('Error fetching insights:', error);
     return [];
+  }
+}
+
+export interface FacultyNotification {
+  id: string;
+  type: 'consecutive_absence' | 'attendance_alert' | 'academic_alert' | 'behavioral_alert';
+  title: string;
+  message: string;
+  student_id?: string;
+  student_name?: string;
+  priority: 'high' | 'medium' | 'low';
+  created_at: string;
+  read: boolean;
+}
+
+// Fetch notifications for a faculty member
+export async function fetchFacultyNotifications(facultyEmail: string): Promise<FacultyNotification[]> {
+  try {
+    const { data } = await client.get<{ data: FacultyNotification[] }>('/notifications/faculty', {
+      params: { faculty_email: facultyEmail }
+    });
+    return data.data || [];
+  } catch (error) {
+    console.error('Error fetching faculty notifications:', error);
+    return [];
+  }
+}
+
+// Fetch unread notification count for a faculty member
+export async function fetchUnreadNotificationCount(facultyEmail: string): Promise<number> {
+  try {
+    const { data } = await client.get<{ data: { count: number } }>('/notifications/faculty/unread-count', {
+      params: { faculty_email: facultyEmail }
+    });
+    return data.data?.count || 0;
+  } catch (error) {
+    console.error('Error fetching unread notification count:', error);
+    return 0;
+  }
+}
+
+// Check consecutive absences for a specific student
+export async function checkConsecutiveAbsences(studentId: string): Promise<{ consecutive_absences: number; absence_dates: string[] }> {
+  try {
+    const { data } = await client.get<{ data: { consecutive_absences: number; absence_dates: string[] } }>(`/notifications/student/${studentId}/consecutive-absences`);
+    return data.data;
+  } catch (error) {
+    console.error('Error checking consecutive absences:', error);
+    return { consecutive_absences: 0, absence_dates: [] };
+  }
+}
+
+// Process all students for consecutive absences (admin function)
+export async function processConsecutiveAbsences(): Promise<{ alerts_created: number }> {
+  try {
+    const { data } = await client.post<{ data: { alerts_created: number } }>('/notifications/process-consecutive-absences');
+    return data.data;
+  } catch (error) {
+    console.error('Error processing consecutive absences:', error);
+    throw error;
+  }
+}
+
+// Mark a notification as read
+export async function markNotificationAsRead(notificationId: string): Promise<void> {
+  try {
+    await client.put(`/notifications/${notificationId}/read`);
+  } catch (error) {
+    console.error('Error marking notification as read:', error);
+    throw error;
+  }
+}
+
+// Mark all notifications as read for a faculty member
+export async function markAllNotificationsAsRead(facultyEmail: string): Promise<void> {
+  try {
+    await client.put('/notifications/faculty/mark-all-read', {
+      params: { faculty_email: facultyEmail }
+    });
+  } catch (error) {
+    console.error('Error marking all notifications as read:', error);
+    throw error;
+  }
+}
+
+// Create a risk alert notification
+export async function createRiskAlert(studentId: string, riskLevel: string, facultyEmail: string): Promise<void> {
+  try {
+    await client.post('/notifications/risk-alert', {
+      student_id: studentId,
+      risk_level: riskLevel,
+      faculty_email: facultyEmail
+    });
+  } catch (error) {
+    console.error('Error creating risk alert:', error);
+    throw error;
+  }
+}
+
+// Create an intervention alert notification
+export async function createInterventionAlert(studentId: string, interventionType: string, facultyEmail: string): Promise<void> {
+  try {
+    await client.post('/notifications/intervention-alert', {
+      student_id: studentId,
+      intervention_type: interventionType,
+      faculty_email: facultyEmail
+    });
+  } catch (error) {
+    console.error('Error creating intervention alert:', error);
+    throw error;
+  }
+}
+
+// Create an academic alert notification
+export async function createAcademicAlert(studentId: string, academicMessage: string, facultyEmail: string): Promise<void> {
+  try {
+    await client.post('/notifications/academic-alert', {
+      student_id: studentId,
+      academic_message: academicMessage,
+      faculty_email: facultyEmail
+    });
+  } catch (error) {
+    console.error('Error creating academic alert:', error);
+    throw error;
+  }
+}
+
+// Create a behavioral alert notification
+export async function createBehavioralAlert(studentId: string, behaviorMessage: string, facultyEmail: string): Promise<void> {
+  try {
+    await client.post('/notifications/behavioral-alert', {
+      student_id: studentId,
+      behavior_message: behaviorMessage,
+      faculty_email: facultyEmail
+    });
+  } catch (error) {
+    console.error('Error creating behavioral alert:', error);
+    throw error;
+  }
+}
+
+// Create a system notification
+export async function createSystemNotification(userEmail: string, title: string, message: string, priority?: 'high' | 'medium' | 'low'): Promise<void> {
+  try {
+    await client.post('/notifications/system-notification', {
+      user_email: userEmail,
+      title: title,
+      message: message,
+      priority: priority || 'low'
+    });
+  } catch (error) {
+    console.error('Error creating system notification:', error);
+    throw error;
   }
 }

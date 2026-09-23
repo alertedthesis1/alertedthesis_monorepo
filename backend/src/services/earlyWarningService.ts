@@ -17,8 +17,7 @@ export interface EarlyWarningPrediction {
 
 export interface StudentMetrics {
   attendance_rate: number;
-  average_gpa: number;
-  majorSubjectsFailed: number;
+  overall_average: number;
   behavior_incidents: number;
   high_severity_incidents: number;
   intervention_count: number;
@@ -82,12 +81,11 @@ export class EarlyWarningService {
 
     // Academic metrics
     const latestAcademic = academicRecords.length > 0 ? academicRecords[0] : null;
-    const averageGpa = latestAcademic?.gpa || 0;
-    const majorSubjectsFailed = latestAcademic?.major_subjects_failed || 0;
+    const overallAverage = latestAcademic?.overall_average || 0;
 
     // Grade trend
     const gradeTrend = academicRecords.length >= 2 
-      ? (academicRecords[0]?.gpa >= academicRecords[1]?.gpa ? 'improving' : 'declining')
+      ? (academicRecords[0]?.overall_average >= academicRecords[1]?.overall_average ? 'improving' : 'declining')
       : 'stable';
 
     // Behavior metrics
@@ -104,8 +102,7 @@ export class EarlyWarningService {
 
     return {
       attendance_rate: attendanceRate,
-      average_gpa: averageGpa,
-      majorSubjectsFailed,
+      overall_average: overallAverage,
       behavior_incidents: behaviorIncidents,
       high_severity_incidents: highSeverityIncidents,
       intervention_count: interventionCount,
@@ -131,16 +128,12 @@ export class EarlyWarningService {
     if (metrics.recent_attendance_trend === 'declining') riskScore += 15;
     else if (metrics.recent_attendance_trend === 'stable') riskScore += 5;
 
-    // Academic factor (25% weight)
-    if (metrics.average_gpa < 1.5) riskScore += 25;
-    else if (metrics.average_gpa < 2.0) riskScore += 20;
-    else if (metrics.average_gpa < 2.5) riskScore += 15;
-    else if (metrics.average_gpa < 3.0) riskScore += 10;
-
-    // Failed major subjects factor (10% weight)
-    if (metrics.majorSubjectsFailed >= 3) riskScore += 10;
-    else if (metrics.majorSubjectsFailed >= 2) riskScore += 7;
-    else if (metrics.majorSubjectsFailed >= 1) riskScore += 3;
+    // Academic factor (35% weight)
+    if (metrics.overall_average < 50) riskScore += 35;
+    else if (metrics.overall_average < 60) riskScore += 28;
+    else if (metrics.overall_average < 70) riskScore += 21;
+    else if (metrics.overall_average < 75) riskScore += 14;
+    else if (metrics.overall_average < 80) riskScore += 7;
 
     // Behavior factor (10% weight)
     if (metrics.high_severity_incidents >= 3) riskScore += 10;
@@ -164,28 +157,22 @@ export class EarlyWarningService {
   private calculateAcademicFailureRisk(metrics: StudentMetrics): number {
     let riskScore = 0;
 
-    // GPA factor (40% weight)
-    if (metrics.average_gpa < 1.0) riskScore += 40;
-    else if (metrics.average_gpa < 1.5) riskScore += 35;
-    else if (metrics.average_gpa < 2.0) riskScore += 30;
-    else if (metrics.average_gpa < 2.5) riskScore += 20;
-    else if (metrics.average_gpa < 3.0) riskScore += 10;
+    // Overall average factor (60% weight)
+    if (metrics.overall_average < 50) riskScore += 60;
+    else if (metrics.overall_average < 60) riskScore += 48;
+    else if (metrics.overall_average < 70) riskScore += 36;
+    else if (metrics.overall_average < 75) riskScore += 24;
+    else if (metrics.overall_average < 80) riskScore += 12;
 
     // Grade trend factor (20% weight)
     if (metrics.recent_grade_trend === 'declining') riskScore += 20;
     else if (metrics.recent_grade_trend === 'stable') riskScore += 10;
 
-    // Failed major subjects factor (25% weight)
-    if (metrics.majorSubjectsFailed >= 4) riskScore += 25;
-    else if (metrics.majorSubjectsFailed >= 3) riskScore += 20;
-    else if (metrics.majorSubjectsFailed >= 2) riskScore += 15;
-    else if (metrics.majorSubjectsFailed >= 1) riskScore += 8;
-
-    // Attendance factor (10% weight)
-    if (metrics.attendance_rate < 50) riskScore += 10;
-    else if (metrics.attendance_rate < 60) riskScore += 8;
-    else if (metrics.attendance_rate < 70) riskScore += 5;
-    else if (metrics.attendance_rate < 80) riskScore += 3;
+    // Attendance factor (15% weight)
+    if (metrics.attendance_rate < 50) riskScore += 15;
+    else if (metrics.attendance_rate < 60) riskScore += 12;
+    else if (metrics.attendance_rate < 70) riskScore += 8;
+    else if (metrics.attendance_rate < 80) riskScore += 4;
 
     // Behavior factor (5% weight)
     if (metrics.high_severity_incidents >= 2) riskScore += 5;
@@ -214,9 +201,8 @@ export class EarlyWarningService {
 
     if (metrics.attendance_rate < 70) factors.push('Low attendance rate');
     if (metrics.recent_attendance_trend === 'declining') factors.push('Declining attendance trend');
-    if (metrics.average_gpa < 2.5) factors.push('Low GPA');
+    if (metrics.overall_average < 70) factors.push('Low academic performance');
     if (metrics.recent_grade_trend === 'declining') factors.push('Declining academic performance');
-    if (metrics.majorSubjectsFailed >= 2) factors.push('Multiple failed major subjects');
     if (metrics.high_severity_incidents >= 2) factors.push('High-severity behavioral incidents');
     if (metrics.intervention_count >= 5) factors.push('High intervention frequency');
     if (metrics.current_risk_score >= 70) factors.push('High current risk score');
@@ -240,15 +226,10 @@ export class EarlyWarningService {
       actions.push('Provide attendance support resources');
     }
 
-    if (riskFactors.includes('Low GPA') || riskFactors.includes('Declining academic performance')) {
+    if (riskFactors.includes('Low academic performance') || riskFactors.includes('Declining academic performance')) {
       actions.push('Refer to academic counseling');
       actions.push('Arrange tutoring support');
       actions.push('Review study habits and time management');
-    }
-
-    if (riskFactors.includes('Multiple failed major subjects')) {
-      actions.push('Develop academic recovery plan');
-      actions.push('Consider major subject load adjustment');
     }
 
     if (riskFactors.includes('High-severity behavioral incidents')) {

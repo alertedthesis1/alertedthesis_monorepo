@@ -20,6 +20,7 @@ import {
   Edit,
   Trash2,
   Filter,
+  MessageCircle,
 } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import RiskBadge from '@/components/ui/RiskBadge';
@@ -78,11 +79,6 @@ export default function StudentProfile() {
     english_grade: '',
     science_grade: '',
     overall_average: '',
-    gpa: '',
-    major_subjects_enrolled: '',
-    major_subjects_passed: '',
-    major_subjects_failed: '',
-    total_units: '',
   });
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [editingAttendance, setEditingAttendance] = useState<any>(null);
@@ -237,11 +233,6 @@ export default function StudentProfile() {
         english_grade: '',
         science_grade: '',
         overall_average: '',
-        gpa: '',
-        major_subjects_enrolled: '',
-        major_subjects_passed: '',
-        major_subjects_failed: '',
-        total_units: '',
       });
     } catch (error) {
       console.error('Error saving academic record:', error);
@@ -277,11 +268,6 @@ export default function StudentProfile() {
         english_grade: academic.english_grade?.toString() || '',
         science_grade: academic.science_grade?.toString() || '',
         overall_average: academic.overall_average?.toString() || '',
-        gpa: academic.gpa.toString(),
-        major_subjects_enrolled: academic.major_subjects_enrolled?.toString() || academic.courses_enrolled?.toString() || '',
-        major_subjects_passed: academic.major_subjects_passed?.toString() || academic.courses_passed?.toString() || '',
-        major_subjects_failed: academic.major_subjects_failed?.toString() || academic.courses_failed?.toString() || '',
-        total_units: academic.total_units?.toString() || '',
       });
     } else {
       setEditingAcademic(null);
@@ -292,11 +278,6 @@ export default function StudentProfile() {
         english_grade: '',
         science_grade: '',
         overall_average: '',
-        gpa: '',
-        major_subjects_enrolled: '',
-        major_subjects_passed: '',
-        major_subjects_failed: '',
-        total_units: '',
       });
     }
     setShowAcademicModal(true);
@@ -423,7 +404,7 @@ export default function StudentProfile() {
                 {student.firstName} {student.lastName}
               </h1>
               <p className="text-xs text-gray-500">
-                {student.studentNo} • {student.grade} - {student.section}
+                {student.student_id || student.studentNo} • {student.grade} - {student.section}
               </p>
             </div>
           </div>
@@ -507,14 +488,41 @@ export default function StudentProfile() {
             <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
               <h3 className="mb-4 font-bold text-gray-900">Quick Actions</h3>
               <div className="space-y-2">
-                <button className="flex w-full items-center gap-3 rounded-lg bg-green-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-800">
+                <button 
+                  onClick={() => router.push('/counselor')}
+                  className="flex w-full items-center gap-3 rounded-lg bg-green-700 px-3 py-2.5 text-sm font-semibold text-white hover:bg-green-800"
+                >
                   <Calendar size={16} /> Schedule Meeting
                 </button>
-                <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                <button 
+                  onClick={() => {
+                    if (student.guardianPhone) {
+                      window.open(`tel:${student.guardianPhone}`, '_blank');
+                    } else {
+                      alert('Guardian phone number not available');
+                    }
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                >
                   <Phone size={16} className="text-gray-500" /> Contact Guardian
                 </button>
-                <button className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100">
-                  <FileText size={16} className="text-gray-500" /> Generate Report
+                <button 
+                  onClick={() => {
+                    if (student.guardianPhone) {
+                      // Try to open WhatsApp if the phone number looks like a Philippine mobile number
+                      const phone = student.guardianPhone.replace(/\D/g, '');
+                      if (phone.startsWith('09') && phone.length === 11) {
+                        window.open(`https://wa.me/63${phone.substring(1)}`, '_blank');
+                      } else {
+                        window.open(`tel:${student.guardianPhone}`, '_blank');
+                      }
+                    } else {
+                      alert('Guardian phone number not available');
+                    }
+                  }}
+                  className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                >
+                  <MessageCircle size={16} className="text-gray-500" /> WhatsApp Guardian
                 </button>
               </div>
             </div>
@@ -561,11 +569,6 @@ export default function StudentProfile() {
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">English</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Science</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overall Avg</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GPA</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Enrolled</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Passed</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Major Subjects Failed</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Units</th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                       </tr>
                     </thead>
@@ -586,11 +589,6 @@ export default function StudentProfile() {
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.english_grade || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.science_grade || '-'}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.overall_average || '-'}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.gpa}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.major_subjects_enrolled || academic.courses_enrolled}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.major_subjects_passed || academic.courses_passed}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.major_subjects_failed || academic.courses_failed}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{academic.total_units}</td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <div className="flex items-center gap-2">
                               <button
@@ -1011,67 +1009,6 @@ export default function StudentProfile() {
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     placeholder="0-100"
                   />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">GPA</label>
-                  <input
-                    required
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4"
-                    value={academicForm.gpa}
-                    onChange={(e) => setAcademicForm({ ...academicForm, gpa: e.target.value })}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="e.g., 3.12"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Major Subjects Enrolled</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={academicForm.major_subjects_enrolled}
-                      onChange={(e) => setAcademicForm({ ...academicForm, major_subjects_enrolled: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Major Subjects Passed</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={academicForm.major_subjects_passed}
-                      onChange={(e) => setAcademicForm({ ...academicForm, major_subjects_passed: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Major Subjects Failed</label>
-                    <input
-                      required
-                      type="number"
-                      min="0"
-                      value={academicForm.major_subjects_failed}
-                      onChange={(e) => setAcademicForm({ ...academicForm, major_subjects_failed: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Total Units</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={academicForm.total_units}
-                      onChange={(e) => setAcademicForm({ ...academicForm, total_units: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
                 </div>
               </div>
               <div className="mt-6 flex justify-end gap-3">

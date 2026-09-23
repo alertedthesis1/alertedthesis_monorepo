@@ -42,6 +42,8 @@ import fileRoutes from './routes/files';
 
 import seedRoutes from './routes/seed';
 
+import notificationRoutes from './routes/notifications';
+
 
 
 dotenv.config();
@@ -227,6 +229,8 @@ app.use('/api/academicrecords', academicRecordsRoutes);
 app.use('/api/files', fileRoutes);
 
 app.use('/api/seed', seedRoutes);
+
+app.use('/api/notifications', notificationRoutes);
 
 
 

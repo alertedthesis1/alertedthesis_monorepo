@@ -25,3 +25,5 @@ services:
         value: alerted-storage
       - key: R2_REGION
         value: auto
+      - key: R2_PUBLIC_URL
+        value: https://022e50c9cb2cd84a296eddb3a68d0e28.r2.cloudflarestorage.com/alerted-storage

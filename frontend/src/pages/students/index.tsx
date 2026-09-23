@@ -17,7 +17,6 @@ interface Student {
   enrollment_date: string;
   status: string;
   program: string;
-  year_level: number;
   grade_level: string;
   section: string;
   phone?: string;
@@ -47,13 +46,13 @@ export default function StudentsManagement() {
     email: '',
     grade_level: '',
     section: '',
-    year_level: 1,
     program: '',
     phone: '',
     address: '',
     guardian_name: '',
     guardian_relation: '',
     guardian_phone: '',
+    enrollment_date: '',
   });
 
   useEffect(() => {
@@ -88,13 +87,13 @@ export default function StudentsManagement() {
       email: '',
       grade_level: '',
       section: '',
-      year_level: 1,
       program: '',
       phone: '',
       address: '',
       guardian_name: '',
       guardian_relation: '',
       guardian_phone: '',
+      enrollment_date: '',
     });
     setShowModal(true);
   };
@@ -107,13 +106,13 @@ export default function StudentsManagement() {
       email: student.email,
       grade_level: student.grade_level || '',
       section: student.section || '',
-      year_level: student.year_level || 1,
       program: student.program || '',
       phone: student.phone || '',
       address: student.address || '',
       guardian_name: student.guardian_name || '',
       guardian_relation: student.guardian_relation || '',
       guardian_phone: student.guardian_phone || '',
+      enrollment_date: student.enrollment_date ? student.enrollment_date.split('T')[0] : '',
     });
     setShowModal(true);
   };
@@ -222,29 +221,35 @@ export default function StudentsManagement() {
             <p className="text-gray-500">Loading students...</p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Student ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Name
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Email
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Grade/Section
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Grade
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Phone
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
-                    Section
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Address
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Guardian
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
+                    Program
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
+                  <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                     Actions
                   </th>
                 </tr>
@@ -252,31 +257,42 @@ export default function StudentsManagement() {
               <tbody className="divide-y divide-gray-200 bg-white">
                 {filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={9} className="px-6 py-12 text-center text-gray-500">
                       No students found
                     </td>
                   </tr>
                 ) : (
                   filteredStudents.map((student) => (
                     <tr key={student._id} className="hover:bg-gray-50">
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-900">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-900">
                         {student.student_id || 'N/A'}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-4 py-4">
                         <div className="text-sm font-medium text-gray-900">
                           {student.first_name} {student.last_name}
                         </div>
+                        <div className="text-xs text-gray-500">
+                          {student.email}
+                        </div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        {student.email}
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">
+                        <div>{student.grade_level}</div>
+                        <div className="text-xs text-gray-400">{student.section || 'N/A'}</div>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        {student.grade_level}
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">
+                        {student.phone || 'N/A'}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-500">
-                        {student.section || 'N/A'}
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500 max-w-xs truncate">
+                        {student.address || 'N/A'}
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4">
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">
+                        <div className="text-xs font-medium text-gray-900">{student.guardian_name || 'N/A'}</div>
+                        <div className="text-xs text-gray-400">{student.guardian_phone || 'N/A'}</div>
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-500">
+                        {student.program || 'N/A'}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-4">
                         <span className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
                           student.status === 'Active' ? 'bg-green-100 text-green-800' :
                           student.status === 'Graduated' ? 'bg-blue-100 text-blue-800' :
@@ -287,7 +303,7 @@ export default function StudentsManagement() {
                           {student.status}
                         </span>
                       </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
+                      <td className="whitespace-nowrap px-4 py-4 text-right text-sm font-medium">
                         <button
                           onClick={() => handleEdit(student)}
                           className="mr-3 text-indigo-600 hover:text-indigo-900"
@@ -415,27 +431,28 @@ export default function StudentsManagement() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Year Level</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={formData.year_level}
-                      onChange={(e) => setFormData({ ...formData, year_level: parseInt(e.target.value) })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Program</label>
-                    <input
-                      type="text"
-                      value={formData.program}
-                      onChange={(e) => setFormData({ ...formData, program: e.target.value })}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
-                    />
-                  </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Program</label>
+                  <select
+                    required
+                    value={formData.program}
+                    onChange={(e) => setFormData({ ...formData, program: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                  >
+                    <option value="">Select Program</option>
+                    <option value="BEC - Junior High School">BEC - Junior High School</option>
+                    <option value="SPED - Junior High School">SPED - Junior High School</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Enrollment Date</label>
+                  <input
+                    type="date"
+                    value={formData.enrollment_date}
+                    onChange={(e) => setFormData({ ...formData, enrollment_date: e.target.value })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-green-600 focus:ring-2 focus:ring-green-100"
+                  />
                 </div>
 
                 <div>

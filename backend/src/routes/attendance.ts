@@ -3,6 +3,7 @@ import { Attendance } from '../models/Attendance';
 import { AcademicRecord } from '../models/AcademicRecord';
 import { Student } from '../models/Student';
 import { updateRiskScoreForStudent } from '../services/riskCalculationService';
+import { notificationService } from '../services/notificationService';
 
 const router = Router();
 
@@ -17,32 +18,22 @@ router.post('/', async (req: Request, res: Response) => {
       attendance_date: new Date(attendance_date)
     });
 
+    let attendance;
     if (existingAttendance) {
       // Update existing attendance
       existingAttendance.present = present;
-      await existingAttendance.save();
-      
-      // Automatically recalculate risk score for the student
-      try {
-        await updateRiskScoreForStudent(student_id);
-      } catch (error) {
-        console.error('Error updating risk score after attendance:', error);
-        // Don't fail the request if risk score update fails
-      }
-      
-      return res.json({ data: existingAttendance });
+      attendance = await existingAttendance.save();
+    } else {
+      // Create new attendance record
+      attendance = new Attendance({
+        student_id,
+        attendance_date: new Date(attendance_date),
+        present,
+        course_code: 'GENERAL',
+        course_name: 'General Attendance'
+      });
+      attendance = await attendance.save();
     }
-
-    // Create new attendance record
-    const attendance = new Attendance({
-      student_id,
-      attendance_date: new Date(attendance_date),
-      present,
-      course_code: 'GENERAL',
-      course_name: 'General Attendance'
-    });
-
-    await attendance.save();
     
     // Automatically recalculate risk score for the student
     try {
@@ -51,8 +42,22 @@ router.post('/', async (req: Request, res: Response) => {
       console.error('Error updating risk score after attendance:', error);
       // Don't fail the request if risk score update fails
     }
+
+    // Check for consecutive absences and create alerts if needed
+    if (!present) {
+      try {
+        const { count, dates } = await notificationService.checkConsecutiveAbsences(student_id);
+        if (count >= 5) {
+          await notificationService.createConsecutiveAbsenceAlert(student_id, count, dates);
+        }
+      } catch (error) {
+        console.error('Error checking consecutive absences:', error);
+        // Don't fail the request if notification check fails
+      }
+    }
     
-    res.status(201).json({ data: attendance });
+    const statusCode = existingAttendance ? 200 : 201;
+    res.status(statusCode).json({ data: attendance });
   } catch (error) {
     console.error('Error recording attendance:', error);
     res.status(500).json({ error: 'Failed to record attendance' });

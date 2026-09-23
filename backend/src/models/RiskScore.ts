@@ -19,9 +19,6 @@ export interface IRiskScore extends Document {
     attendanceRate: number;
     unexcusedAbsenceRate: number;
     overallAverage: number;
-    gpa: number;
-    failedMajorSubjects: number;
-    majorSubjectCompletionRate: number;
     subjectGrades: {
       mathematics: number;
       english: number;
@@ -77,9 +74,6 @@ const riskScoreSchema = new Schema<IRiskScore>(
       attendanceRate: Number,
       unexcusedAbsenceRate: Number,
       overallAverage: Number,
-      gpa: Number,
-      failedMajorSubjects: Number,
-      majorSubjectCompletionRate: Number,
       subjectGrades: {
         mathematics: Number,
         english: Number,
