@@ -115,8 +115,8 @@ export default function Counselor() {
         student_id: '',
       });
       success('Report Generated', 'Report generated successfully!');
-    } catch (error) {
-      console.error('Error generating report:', error);
+    } catch (err) {
+      console.error('Error generating report:', err);
       error('Report Generation Failed', 'Failed to generate report');
     } finally {
       setGeneratingReport(false);
@@ -157,8 +157,8 @@ export default function Counselor() {
     try {
       await downloadReport(reportId, reportTitle);
       success('Report Downloaded', 'Report downloaded successfully!');
-    } catch (error) {
-      console.error('Error downloading report:', error);
+    } catch (err) {
+      console.error('Error downloading report:', err);
       error('Download Failed', 'Failed to download report');
     }
   };
@@ -246,8 +246,8 @@ export default function Counselor() {
         });
         setEarlyWarnings(warningsMap);
       }
-    } catch (error) {
-      console.error('Error recalculating risk scores:', error);
+    } catch (err) {
+      console.error('Error recalculating risk scores:', err);
       error('Recalculation Failed', 'Failed to recalculate risk scores. Please try again.');
     } finally {
       setIsRecalculating(false);
@@ -931,7 +931,7 @@ export default function Counselor() {
                                                 await axios.patch(`${API_URL}/schedules/${schedule._id}/status`, { status: newStatus });
                                                 const updatedSchedules = await fetchSchedules(user?.email);
                                                 setSchedules(updatedSchedules);
-                                              } catch (error) {
+                                              } catch (err) {
                                                 console.error('Error updating schedule status:', error);
                                                 alert('Failed to update schedule status');
                                               }
@@ -1015,7 +1015,7 @@ export default function Counselor() {
                                                 await axios.patch(`${API_URL}/schedules/${schedule._id}/status`, { status: newStatus });
                                                 const updatedSchedules = await fetchSchedules(user?.email);
                                                 setSchedules(updatedSchedules);
-                                              } catch (error) {
+                                              } catch (err) {
                                                 console.error('Error updating schedule status:', error);
                                                 alert('Failed to update schedule status');
                                               }
@@ -1625,7 +1625,7 @@ export default function Counselor() {
                   setSchedules(updatedSchedules);
                   setShowInterventionModal(false);
                   setSelectedSchedule(null);
-                } catch (error) {
+                } catch (err) {
                   console.error('Error creating intervention:', error);
                   alert('Failed to create intervention');
                 }
@@ -1697,7 +1697,7 @@ export default function Counselor() {
                         setSchedules(updatedSchedules);
                         setShowInterventionModal(false);
                         setSelectedSchedule(null);
-                      } catch (error) {
+                      } catch (err) {
                         console.error('Error adding notes:', error);
                         alert('Failed to add notes');
                       }
@@ -1719,7 +1719,7 @@ export default function Counselor() {
                         setSchedules(updatedSchedules);
                         setShowInterventionModal(false);
                         setSelectedSchedule(null);
-                      } catch (error) {
+                      } catch (err) {
                         console.error('Error completing intervention:', error);
                         alert('Failed to complete intervention');
                       }
