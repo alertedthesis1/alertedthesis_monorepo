@@ -216,7 +216,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         title = `Behavioral Report - ${student.first_name} ${student.last_name}`;
         description = 'Behavioral incidents and observations';
         const behavioralInterventions = await Intervention.find({ student_id });
-        const behavioralInterventionIds = behavioralInterventions.map(i => i._id);
+        const behavioralInterventionIds = behavioralInterventions.map(i => i.intervention_id);
         const behavioralTasks = await Task.find({ intervention_id: { $in: behavioralInterventionIds } });
         const behavioralSchedules = await Schedule.find({ intervention_id: { $in: behavioralInterventionIds } });
         
@@ -262,7 +262,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         
         // Get related interventions and tasks for risk context
         const riskActiveInterventions = await Intervention.find({ student_id, status: 'Active' });
-        const riskInterventionIds = riskActiveInterventions.map(i => i._id);
+        const riskInterventionIds = riskActiveInterventions.map(i => i.intervention_id);
         const riskActiveTasks = await Task.find({ intervention_id: { $in: riskInterventionIds }, status: { $in: ['Pending', 'In Progress'] } });
         
         // Clean historical scores for clearer presentation
@@ -306,7 +306,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         title = `Intervention Report - ${student.first_name} ${student.last_name}`;
         description = 'Intervention outcomes and progress';
         const allStudentInterventions = await Intervention.find({ student_id });
-        const studentInterventionIds = allStudentInterventions.map(i => i._id);
+        const studentInterventionIds = allStudentInterventions.map(i => i.intervention_id);
         const studentInterventionTasks = await Task.find({ intervention_id: { $in: studentInterventionIds } });
         
         // Clean intervention details for clearer presentation
@@ -317,7 +317,7 @@ router.post('/generate', async (req: Request, res: Response) => {
           start_date: i.start_date ? i.start_date.toISOString().split('T')[0] : 'N/A',
           end_date: i.end_date ? i.end_date.toISOString().split('T')[0] : 'Ongoing',
           outcome: i.outcome || 'In progress',
-          task_count: studentInterventionTasks.filter((t: any) => t.intervention_id.toString() === i._id.toString()).length
+          task_count: studentInterventionTasks.filter((t: any) => t.intervention_id === i.intervention_id).length
         }));
         
         reportData = {
