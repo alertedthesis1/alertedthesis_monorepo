@@ -373,6 +373,15 @@ export default function Faculty() {
 
         {tab === 'Dashboard' && (
           <>
+
+        {/* Header Cards */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Total Students" value={dashboardStats?.totalStudents ?? 0} caption="Active enrollment" icon={Users} iconColor="text-green-600" valueColor="text-green-600" />
+          <StatCard label="Current Date" value={currentDate} caption="Today" icon={Calendar} iconColor="text-blue-600" valueColor="text-blue-600" />
+          <StatCard label="Present" value={Object.values(attendance).filter(v => v === 'present').length} caption="Today's attendance" icon={CheckCircle} iconColor="text-green-600" valueColor="text-green-600" />
+          <StatCard label="Absent" value={Object.values(attendance).filter(v => v === 'absent').length} caption="Today's attendance" icon={XCircle} iconColor="text-red-600" valueColor="text-red-600" />
+        </div>
+
         {/* Term and Year Filters */}
         <div className="mt-6 rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-center gap-3 mb-3">
@@ -431,14 +440,6 @@ export default function Faculty() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Header Cards */}
-        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total Students" value={dashboardStats?.totalStudents ?? 0} caption="Active enrollment" icon={Users} iconColor="text-green-600" valueColor="text-green-600" />
-          <StatCard label="Current Date" value={currentDate} caption="Today" icon={Calendar} iconColor="text-blue-600" valueColor="text-blue-600" />
-          <StatCard label="Present" value={Object.values(attendance).filter(v => v === 'present').length} caption="Today's attendance" icon={CheckCircle} iconColor="text-green-600" valueColor="text-green-600" />
-          <StatCard label="Absent" value={Object.values(attendance).filter(v => v === 'absent').length} caption="Today's attendance" icon={XCircle} iconColor="text-red-600" valueColor="text-red-600" />
         </div>
 
         {/* Student Cards Section */}
@@ -536,57 +537,14 @@ export default function Faculty() {
 
         {tab === 'Attendance' && (
           <>
+        {/* Header Cards */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard label="Total Students" value={dashboardStats?.totalStudents ?? 0} caption="Active enrollment" icon={Users} iconColor="text-green-600" valueColor="text-green-600" />
+          <StatCard label="Current Date" value={currentDate} caption="Today" icon={Calendar} iconColor="text-blue-600" valueColor="text-blue-600" />
+          <StatCard label="Present" value={Object.values(attendance).filter(v => v === 'present').length} caption="Today's attendance" icon={CheckCircle} iconColor="text-green-600" valueColor="text-green-600" />
+          <StatCard label="Absent" value={Object.values(attendance).filter(v => v === 'absent').length} caption="Today's attendance" icon={XCircle} iconColor="text-red-600" valueColor="text-red-600" />
+        </div>
             <div className="mt-6">
-              {/* Term and Year Filters for Attendance Tab */}
-              <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <Filter size={18} className="text-gray-600" />
-                  <h3 className="text-sm font-semibold text-gray-900">Filter by Term and Year</h3>
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Term:</label>
-                    <select
-                      value={selectedTerm}
-                      onChange={(e) => setSelectedTerm(e.target.value)}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    >
-                      <option value="">All Terms</option>
-                      {terms.map((term) => (
-                        <option key={term} value={term}>
-                          {term}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm text-gray-600">Year:</label>
-                    <select
-                      value={selectedYear}
-                      onChange={(e) => setSelectedYear(e.target.value)}
-                      className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    >
-                      <option value="">All Years</option>
-                      {years.map((year) => (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {(selectedTerm || selectedYear) && (
-                    <button
-                      onClick={() => {
-                        setSelectedTerm('');
-                        setSelectedYear('');
-                      }}
-                      className="rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
-                    >
-                      Clear Filters
-                    </button>
-                  )}
-                </div>
-              </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <h2 className="text-lg font-bold text-gray-900">Mark Attendance</h2>
@@ -782,38 +740,7 @@ export default function Faculty() {
         {tab === 'Academic Records' && (
           <>
             <div className="mt-6">
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                <h2 className="text-lg font-bold text-gray-900">Student Academic Records</h2>
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <Search size={16} className="text-gray-400" />
-                    <input
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      placeholder="Search students..."
-                      className="w-44 text-sm outline-none placeholder:text-gray-400"
-                    />
-                    {query && (
-                      <button
-                        onClick={() => setQuery('')}
-                        className="text-gray-400 hover:text-gray-600"
-                      >
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
-                  <select
-                    value={sortOption}
-                    onChange={(e) => setSortOption(e.target.value)}
-                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
-                  >
-                    <option value="name-asc">Name (A-Z)</option>
-                    <option value="name-desc">Name (Z-A)</option>
-                    <option value="id-asc">Student ID (A-Z)</option>
-                    <option value="id-desc">Student ID (Z-A)</option>
-                  </select>
-                </div>
-              </div>
+              
 
               {/* Term and Year Filters for Academic Tab */}
               <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
@@ -863,6 +790,39 @@ export default function Faculty() {
                       Clear Filters
                     </button>
                   )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h2 className="text-lg font-bold text-gray-900">Student Academic Records</h2>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <Search size={16} className="text-gray-400" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search students..."
+                      className="w-44 text-sm outline-none placeholder:text-gray-400"
+                    />
+                    {query && (
+                      <button
+                        onClick={() => setQuery('')}
+                        className="text-gray-400 hover:text-gray-600"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={sortOption}
+                    onChange={(e) => setSortOption(e.target.value)}
+                    className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
+                  >
+                    <option value="name-asc">Name (A-Z)</option>
+                    <option value="name-desc">Name (Z-A)</option>
+                    <option value="id-asc">Student ID (A-Z)</option>
+                    <option value="id-desc">Student ID (Z-A)</option>
+                  </select>
                 </div>
               </div>
 
