@@ -5,10 +5,10 @@ export interface ISchedule extends Document {
   student_name: string;
   date: Date;
   time: string;
-  type: 'Mentoring' | 'Tutoring' | 'Counseling' | 'Family Meeting';
+  type: 'Mentoring' | 'Peer Tutoring' | 'Counseling/Coaching' | 'Parent Conference';
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No-Show';
   notes?: string;
-  intervention_id?: mongoose.Types.ObjectId;
+  intervention_id?: string; // Changed from ObjectId to string to store readable intervention ID
   created_by?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -35,8 +35,8 @@ const scheduleSchema = new Schema<ISchedule>(
     },
     type: {
       type: String,
-      enum: ['Mentoring', 'Tutoring', 'Counseling', 'Family Meeting'],
-      default: 'Counseling',
+      enum: ['Mentoring', 'Peer Tutoring', 'Counseling/Coaching', 'Parent Conference'],
+      default: 'Counseling/Coaching',
     },
     status: {
       type: String,
@@ -47,8 +47,7 @@ const scheduleSchema = new Schema<ISchedule>(
       type: String,
     },
     intervention_id: {
-      type: Schema.Types.ObjectId,
-      ref: 'Intervention',
+      type: String, // Changed to String to store readable intervention ID like "M202600001"
     },
     created_by: {
       type: String,

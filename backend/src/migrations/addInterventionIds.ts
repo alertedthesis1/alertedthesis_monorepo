@@ -14,21 +14,21 @@ const sampleNotes = {
     'Reviewed midterm performance. Identified areas for improvement in mathematics.',
     'Student expressed concerns about upcoming presentations. Worked on public speaking skills.',
   ],
-  'Tutoring': [
+  'Peer Tutoring': [
     'Math tutoring session: Covered algebraic equations. Student demonstrated good understanding.',
     'Science review: Helped student with physics concepts. Homework completed successfully.',
     'English literature: Discussed novel themes. Student showed analytical thinking.',
     'Chemistry lab preparation: Reviewed safety protocols and experiment procedures.',
     'History essay assistance: Student outlined main arguments and gathered sources.',
   ],
-  'Counseling': [
+  'Counseling/Coaching': [
     'Initial counseling session: Student opened up about personal challenges. Established trust.',
     'Follow-up session: Discussed coping strategies for stress. Student reported improvement.',
     'Family dynamics discussion: Explored communication patterns within family.',
     'Goal-setting session: Student identified short-term and long-term objectives.',
     'Crisis intervention: Provided immediate support for emotional distress.',
   ],
-  'Family Meeting': [
+  'Parent Conference': [
     'Family conference: Discussed student\'s academic progress. Parents engaged constructively.',
     'Mediation session: Addressed conflicts between student and family members.',
     'Behavioral plan review: Family agreed on consistent discipline approach.',
@@ -40,9 +40,9 @@ const sampleNotes = {
 async function generateInterventionId(interventionType: string): Promise<string> {
   const typePrefixMap: Record<string, string> = {
     'Mentoring': 'M',
-    'Tutoring': 'T',
-    'Counseling': 'C',
-    'Family Meeting': 'F',
+    'Peer Tutoring': 'T',
+    'Counseling/Coaching': 'C',
+    'Parent Conference': 'P',
   };
 
   const prefix = typePrefixMap[interventionType] || 'X';

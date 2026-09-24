@@ -13,6 +13,8 @@
     "seed-high-risk": "ts-node src/seedHighRiskStudents.ts",
     "seed-attendance-all": "ts-node src/seedAttendanceForAllTerms.ts",
     "seed-attendance-sept1": "ts-node src/seedAttendanceFromSept1.ts",
+    "seed-attendance-academics": "node --expose-gc --max-old-space-size=4096 -r ts-node/register src/seedAttendanceAcademics.ts",
+    "seed-interconnected": "ts-node src/generateInterconnectedData.ts",
     "clear-data": "ts-node src/clearExistingData.ts",
     "migrate": "ts-node migrations/run.ts",
     "recalculate-risks": "ts-node src/recalculateRiskScores.ts"

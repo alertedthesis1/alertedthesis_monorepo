@@ -8,6 +8,7 @@ export interface IActivityLog extends Document {
   target_type?: string;
   target_id?: string;
   details?: any;
+  last_login?: Date;
   timestamp: Date;
 }
 
@@ -37,6 +38,9 @@ const activityLogSchema = new Schema<IActivityLog>(
     },
     details: {
       type: Schema.Types.Mixed,
+    },
+    last_login: {
+      type: Date,
     },
     timestamp: {
       type: Date,

@@ -37,7 +37,7 @@ router.get('/user/:userEmail', async (req: Request, res: Response) => {
 // Create a new activity log
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { action, user, user_email, user_role, target_type, target_id, details } = req.body;
+    const { action, user, user_email, user_role, target_type, target_id, details, last_login } = req.body;
 
     const log = new ActivityLog({
       action,
@@ -47,6 +47,7 @@ router.post('/', async (req: Request, res: Response) => {
       target_type,
       target_id,
       details,
+      last_login,
     });
 
     await log.save();

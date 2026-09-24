@@ -9,6 +9,7 @@ export interface IUser extends Document {
   department?: string;
   section?: string;
   isActive: boolean;
+  lastLogin?: Date;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -50,6 +51,9 @@ const userSchema = new Schema<IUser>(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    lastLogin: {
+      type: Date,
     },
   },
   { timestamps: true }

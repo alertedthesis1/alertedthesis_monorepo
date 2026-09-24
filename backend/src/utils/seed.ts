@@ -8,6 +8,8 @@ import { Attendance } from '../models/Attendance';
 import { BehaviorReport } from '../models/BehaviorReport';
 import { RiskScore } from '../models/RiskScore';
 import { Intervention } from '../models/Intervention';
+import { Schedule } from '../models/Schedule';
+import { Task } from '../models/Task';
 import { calculateRiskScoreFromValues } from '../services/riskCalculationService';
 
 dns.setServers(['8.8.8.8', '8.8.4.4']);
@@ -83,9 +85,9 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 68, english: 74, science: 74 },
     attendanceTrend: -5,
     interventions: [
-      { type: 'Counseling', status: 'Completed', daysAgo: 30 },
-      { type: 'Tutoring', status: 'Active', daysAgo: 12 },
-      { type: 'Family Meeting', status: 'Active', daysAgo: 2 },
+      { type: 'Counseling/Coaching', status: 'Completed', daysAgo: 30 },
+      { type: 'Peer Tutoring', status: 'Active', daysAgo: 12 },
+      { type: 'Parent Conference', status: 'Active', daysAgo: 2 },
     ],
     behavior: [
       { incident_type: 'Late Attendance', severity: 'Medium', description: 'Late to class 5 times this week', daysAgo: 6 },
@@ -116,7 +118,7 @@ const SEED_STUDENTS: SeedStudent[] = [
     majorSubjectsFailed: 0,
     subjectGrades: { mathematics: 82, english: 84, science: 83 },
     attendanceTrend: -2,
-    interventions: [{ type: 'Counseling', status: 'Active', daysAgo: 7 }],
+    interventions: [{ type: 'Counseling/Coaching', status: 'Active', daysAgo: 7 }],
     behavior: [
       { incident_type: 'Disruption in Class', severity: 'Medium', description: 'Inconsistent participation in class', daysAgo: 10 },
     ],
@@ -147,7 +149,7 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 65, english: 70, science: 69 },
     attendanceTrend: -10,
     interventions: [
-      { type: 'Counseling', status: 'Active', daysAgo: 5 },
+      { type: 'Counseling/Coaching', status: 'Active', daysAgo: 5 },
       { type: 'Mentoring', status: 'Completed', daysAgo: 20 },
     ],
     behavior: [
@@ -235,7 +237,7 @@ const SEED_STUDENTS: SeedStudent[] = [
     majorSubjectsFailed: 0,
     subjectGrades: { mathematics: 80, english: 82, science: 81 },
     attendanceTrend: -1,
-    interventions: [{ type: 'Tutoring', status: 'Completed', daysAgo: 15 }],
+    interventions: [{ type: 'Peer Tutoring', status: 'Completed', daysAgo: 15 }],
     behavior: [],
     assignedFacultyEmail: 'carla.mendoza@sjc.edu.ph',
   },
@@ -264,8 +266,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 72, english: 74, science: 73 },
     attendanceTrend: -4,
     interventions: [
-      { type: 'Counseling', status: 'Active', daysAgo: 3 },
-      { type: 'Family Meeting', status: 'Pending', daysAgo: 0 },
+      { type: 'Counseling/Coaching', status: 'Active', daysAgo: 3 },
+      { type: 'Parent Conference', status: 'Pending', daysAgo: 0 },
     ],
     behavior: [
       { incident_type: 'Late Attendance', severity: 'Low', description: 'Late to class 3 times this month', daysAgo: 8 },
@@ -353,8 +355,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 67, english: 70, science: 70 },
     attendanceTrend: -8,
     interventions: [
-      { type: 'Counseling', status: 'Completed', daysAgo: 25 },
-      { type: 'Tutoring', status: 'Active', daysAgo: 5 },
+      { type: 'Counseling/Coaching', status: 'Completed', daysAgo: 25 },
+      { type: 'Peer Tutoring', status: 'Active', daysAgo: 5 },
     ],
     behavior: [
       { incident_type: 'Disruption in Class', severity: 'High', description: 'Multiple behavioral incidents', daysAgo: 7 },
@@ -442,8 +444,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 68, english: 71, science: 71 },
     attendanceTrend: -6,
     interventions: [
-      { type: 'Counseling', status: 'Active', daysAgo: 8 },
-      { type: 'Family Meeting', status: 'Completed', daysAgo: 18 },
+      { type: 'Counseling/Coaching', status: 'Active', daysAgo: 8 },
+      { type: 'Parent Conference', status: 'Completed', daysAgo: 18 },
     ],
     behavior: [
       { incident_type: 'Unauthorized Absence', severity: 'Medium', description: 'Missed several classes', daysAgo: 12 },
@@ -502,7 +504,7 @@ const SEED_STUDENTS: SeedStudent[] = [
     majorSubjectsFailed: 0,
     subjectGrades: { mathematics: 82, english: 84, science: 83 },
     attendanceTrend: -2,
-    interventions: [{ type: 'Tutoring', status: 'Active', daysAgo: 14 }],
+    interventions: [{ type: 'Peer Tutoring', status: 'Active', daysAgo: 14 }],
     behavior: [],
     assignedFacultyEmail: 'faculty@sjc.edu.ph',
   },
@@ -531,7 +533,7 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 62, english: 67, science: 66 },
     attendanceTrend: -12,
     interventions: [
-      { type: 'Counseling', status: 'Active', daysAgo: 2 },
+      { type: 'Counseling/Coaching', status: 'Active', daysAgo: 2 },
       { type: 'Mentoring', status: 'Pending', daysAgo: 0 },
     ],
     behavior: [
@@ -648,8 +650,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 72, english: 74, science: 73 },
     attendanceTrend: -5,
     interventions: [
-      { type: 'Counseling', status: 'Completed', daysAgo: 20 },
-      { type: 'Tutoring', status: 'Active', daysAgo: 6 },
+      { type: 'Counseling/Coaching', status: 'Completed', daysAgo: 20 },
+      { type: 'Peer Tutoring', status: 'Active', daysAgo: 6 },
     ],
     behavior: [
       { incident_type: 'Late Attendance', severity: 'Medium', description: 'Frequent tardiness', daysAgo: 9 },
@@ -765,8 +767,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 71, english: 74, science: 74 },
     attendanceTrend: -7,
     interventions: [
-      { type: 'Counseling', status: 'Active', daysAgo: 4 },
-      { type: 'Family Meeting', status: 'Pending', daysAgo: 0 },
+      { type: 'Counseling/Coaching', status: 'Active', daysAgo: 4 },
+      { type: 'Parent Conference', status: 'Pending', daysAgo: 0 },
     ],
     behavior: [
       { incident_type: 'Unauthorized Absence', severity: 'High', description: 'Extended absence without notice', daysAgo: 6 },
@@ -882,8 +884,8 @@ const SEED_STUDENTS: SeedStudent[] = [
     subjectGrades: { mathematics: 76, english: 78, science: 77 },
     attendanceTrend: -5,
     interventions: [
-      { type: 'Counseling', status: 'Completed', daysAgo: 22 },
-      { type: 'Tutoring', status: 'Active', daysAgo: 8 },
+      { type: 'Counseling/Coaching', status: 'Completed', daysAgo: 22 },
+      { type: 'Peer Tutoring', status: 'Active', daysAgo: 8 },
     ],
     behavior: [
       { incident_type: 'Late Attendance', severity: 'Medium', description: 'Consistent tardiness issues', daysAgo: 11 },
@@ -984,6 +986,16 @@ function daysAgoDate(days: number): Date {
   return d;
 }
 
+// Helper function to create GMT+8 time
+function toGMT8Time(date: Date, hour: number, minute: number): string {
+  const gmt8Date = new Date(date);
+  gmt8Date.setHours(hour, minute, 0, 0);
+  // Adjust for GMT+8 (UTC+8)
+  const offset = 8; // GMT+8
+  const utcDate = new Date(gmt8Date.getTime() - (offset * 60 * 60 * 1000));
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
 async function seedDatabase() {
   try {
     if (!MONGODB_URI) {
@@ -1001,6 +1013,8 @@ async function seedDatabase() {
       BehaviorReport.deleteMany({}),
       RiskScore.deleteMany({}),
       Intervention.deleteMany({}),
+      Schedule.deleteMany({}),
+      Task.deleteMany({}),
     ]);
     console.log('🧹 Cleared existing collections');
 
@@ -1013,16 +1027,16 @@ async function seedDatabase() {
     // Track intervention ID counters by type
     const interventionIdCounters: Record<string, number> = {
       'Mentoring': 0,
-      'Tutoring': 0,
-      'Counseling': 0,
-      'Family Meeting': 0,
+      'Peer Tutoring': 0,
+      'Counseling/Coaching': 0,
+      'Parent Conference': 0,
     };
 
     const typePrefixMap: Record<string, string> = {
       'Mentoring': 'M',
-      'Tutoring': 'T',
-      'Counseling': 'C',
-      'Family Meeting': 'F',
+      'Peer Tutoring': 'T',
+      'Counseling/Coaching': 'C',
+      'Parent Conference': 'P',
     };
 
     const currentYear = new Date().getFullYear();
@@ -1041,24 +1055,24 @@ async function seedDatabase() {
           'Progress report: Student has improved time management skills. Completed all assigned tasks this week.',
           'Session focused on building confidence. Student participated actively in group activities.',
         ],
-        'Tutoring': [
+        'Peer Tutoring': [
           'Math tutoring session: Covered algebraic equations. Student demonstrated good understanding.',
           'Science review: Helped student with physics concepts. Homework completed successfully.',
           'English literature: Discussed novel themes. Student showed analytical thinking.',
         ],
-        'Counseling': [
+        'Counseling/Coaching': [
           'Initial counseling session: Student opened up about personal challenges. Established trust.',
           'Follow-up session: Discussed coping strategies for stress. Student reported improvement.',
           'Family dynamics discussion: Explored communication patterns within family.',
         ],
-        'Family Meeting': [
+        'Parent Conference': [
           'Family conference: Discussed student\'s academic progress. Parents engaged constructively.',
           'Mediation session: Addressed conflicts between student and family members.',
           'Behavioral plan review: Family agreed on consistent discipline approach.',
         ],
       };
 
-      const typeNotes = notes[type as keyof typeof notes] || notes['Counseling'];
+      const typeNotes = notes[type as keyof typeof notes] || notes['Counseling/Coaching'];
       const note = typeNotes[Math.floor(Math.random() * typeNotes.length)];
       
       const date = daysAgoDate(daysAgo);
@@ -1178,14 +1192,10 @@ async function seedDatabase() {
       }
 
       // Calculate risk score using enhanced formula
-      const courseCompletionRate = s.majorSubjectsFailed === 0 ? 100 : Math.round(((3 - s.majorSubjectsFailed) / 3) * 100);
       const calculatedRisk = calculateRiskScoreFromValues(
         s.attendancePct,
         s.unexcusedAbsencePct,
         s.generalAverage,
-        s.gpa,
-        s.majorSubjectsFailed,
-        courseCompletionRate,
         s.subjectGrades,
         s.attendanceTrend
       );
@@ -1247,22 +1257,110 @@ async function seedDatabase() {
         model_version: '2.0.0',
       });
 
-      // Interventions
+      // Interventions with interconnected Schedules and Tasks
       for (const iv of s.interventions) {
         const intervention_id = generateInterventionId(iv.type);
         const meeting_details = generateMeetingDetails(iv.type, iv.daysAgo);
+        const startDate = daysAgoDate(iv.daysAgo);
         
-        await Intervention.create({
+        // Generate random time between 8 AM and 4 PM in GMT+8
+        const randomHour = Math.floor(Math.random() * 9) + 8; // 8-16
+        const randomMinute = Math.random() > 0.5 ? 0 : 30; // :00 or :30
+        const gmt8Time = toGMT8Time(startDate, randomHour, randomMinute);
+        
+        // Create intervention
+        const intervention = await Intervention.create({
           intervention_id,
           student_id: student._id,
           score_id: latestScore._id,
           intervention_type: iv.type,
           description: `${iv.type} session for ${s.first_name} ${s.last_name}`,
-          start_date: daysAgoDate(iv.daysAgo),
+          start_date: startDate,
           end_date: iv.status === 'Completed' ? daysAgoDate(Math.max(0, iv.daysAgo - 7)) : undefined,
           status: iv.status,
           meeting_details,
         });
+
+        // Create corresponding schedule
+        const scheduleStatus = iv.status === 'Completed' ? 'Completed' : 
+                              iv.status === 'Active' ? 'Scheduled' : 'Scheduled';
+        
+        const schedule = await Schedule.create({
+          student_id: student._id,
+          student_name: `${s.first_name} ${s.last_name}`,
+          date: startDate,
+          time: gmt8Time,
+          type: iv.type,
+          status: scheduleStatus,
+          notes: `Scheduled ${iv.type} session as part of intervention ${intervention_id}`,
+          intervention_id: intervention_id,
+          created_by: 'System',
+        });
+
+        // Update intervention with schedule reference
+        intervention.schedule_id = schedule._id;
+        await intervention.save();
+
+        // Create tasks based on intervention type and status
+        const taskTitles = {
+          'Mentoring': [
+            'Complete initial assessment',
+            'Review academic progress',
+            'Set SMART goals',
+            'Create study schedule',
+            'Monitor attendance patterns',
+          ],
+          'Peer Tutoring': [
+            'Assess subject knowledge gaps',
+            'Schedule tutoring sessions',
+            'Review homework assignments',
+            'Practice problem-solving skills',
+            'Prepare for upcoming exams',
+          ],
+          'Counseling/Coaching': [
+            'Conduct initial counseling session',
+            'Develop coping strategies',
+            'Set behavioral goals',
+            'Family communication plan',
+            'Progress monitoring',
+          ],
+          'Parent Conference': [
+            'Prepare meeting agenda',
+            'Review student performance',
+            'Discuss behavioral concerns',
+            'Create action plan',
+            'Schedule follow-up meeting',
+          ],
+        };
+
+        const taskPriorities: Record<string, 'Low' | 'Medium' | 'High'> = {
+          'Pending': 'High',
+          'Active': 'Medium',
+          'Completed': 'Low',
+        };
+
+        const interventionTasks = taskTitles[iv.type as keyof typeof taskTitles] || taskTitles['Counseling/Coaching'];
+        
+        // Create 2-3 tasks per intervention
+        const numTasks = Math.floor(Math.random() * 2) + 2; // 2-3 tasks
+        for (let i = 0; i < numTasks; i++) {
+          const taskDueDate = new Date(startDate);
+          taskDueDate.setDate(taskDueDate.getDate() + (i + 1) * 3); // Tasks due 3, 6, or 9 days after start
+          
+          const taskStatus = iv.status === 'Completed' ? 'Completed' : 
+                            iv.status === 'Active' && i === 0 ? 'In Progress' : 'Pending';
+          
+          await Task.create({
+            title: interventionTasks[i % interventionTasks.length],
+            description: `Task related to ${iv.type} intervention ${intervention_id}`,
+            student_id: student._id,
+            intervention_id: intervention_id,
+            due_date: taskDueDate,
+            priority: taskPriorities[iv.status] || 'Medium',
+            status: taskStatus,
+            created_by: 'System',
+          });
+        }
       }
 
       console.log(`✅ Seeded ${s.first_name} ${s.last_name} (${s.riskLevel} risk)`);

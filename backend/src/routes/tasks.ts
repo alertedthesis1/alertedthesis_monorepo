@@ -86,7 +86,7 @@ router.post('/', async (req: Request, res: Response) => {
     // If intervention_id is provided, verify it exists
     if (intervention_id) {
       const { Intervention } = await import('../models/Intervention');
-      const intervention = await Intervention.findById(intervention_id);
+      const intervention = await Intervention.findOne({ intervention_id: intervention_id });
       if (!intervention) {
         return res.status(404).json({ error: 'Intervention not found' });
       }
@@ -131,7 +131,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
     // If intervention_id is being updated, verify it exists
     if (updates.intervention_id) {
       const { Intervention } = await import('../models/Intervention');
-      const intervention = await Intervention.findById(updates.intervention_id);
+      const intervention = await Intervention.findOne({ intervention_id: updates.intervention_id });
       if (!intervention) {
         return res.status(404).json({ error: 'Intervention not found' });
       }

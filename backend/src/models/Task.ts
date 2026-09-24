@@ -5,7 +5,7 @@ export interface ITask extends Document {
   description?: string;
   student_id?: mongoose.Types.ObjectId;
   assigned_to?: mongoose.Types.ObjectId;
-  intervention_id?: mongoose.Types.ObjectId;
+  intervention_id?: string; // Changed from ObjectId to string to store readable intervention ID
   due_date?: Date;
   priority: 'Low' | 'Medium' | 'High';
   status: 'Pending' | 'In Progress' | 'Completed';
@@ -32,8 +32,7 @@ const taskSchema = new Schema<ITask>(
       ref: 'Faculty',
     },
     intervention_id: {
-      type: Schema.Types.ObjectId,
-      ref: 'Intervention',
+      type: String, // Changed to String to store readable intervention ID like "M202600001"
     },
     due_date: {
       type: Date,

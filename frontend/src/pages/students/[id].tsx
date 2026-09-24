@@ -32,17 +32,17 @@ const TABS = ['Overview', 'Academic', 'Attendance', 'Interventions', 'Summary'];
 // Mapping between display labels and database values for schedule/intervention types
 const SCHEDULE_TYPE_MAPPING = {
   'Mentoring': 'Mentoring',
-  'Peer Tutoring': 'Tutoring',
-  'Counseling / Coaching': 'Counseling',
-  'Parent Conference': 'Family Meeting',
-  'Family': 'Family Meeting', // Legacy support
+  'Peer Tutoring': 'Peer Tutoring',
+  'Counseling / Coaching': 'Counseling/Coaching',
+  'Parent Conference': 'Parent Conference',
+  'Family': 'Parent Conference', // Legacy support
 };
 
 const REVERSE_SCHEDULE_TYPE_MAPPING = {
   'Mentoring': 'Mentoring',
-  'Tutoring': 'Peer Tutoring',
-  'Counseling': 'Counseling / Coaching',
-  'Family Meeting': 'Parent Conference',
+  'Peer Tutoring': 'Peer Tutoring',
+  'Counseling/Coaching': 'Counseling / Coaching',
+  'Parent Conference': 'Parent Conference',
 };
 
 // Function to convert database value to display label
@@ -88,22 +88,28 @@ export default function StudentProfile() {
     subject: '',
   });
   // Function to determine current term based on today's date
+  // Philippine school calendar (updated to specific weeks):
+  // 1st Term: 2nd week June to 2nd week September
+  // 2nd Term: 3rd week September to 2nd week December
+  // 3rd Term: 2nd week January to 1st week April (next calendar year)
   const getCurrentTerm = (): { term: string; year: string } => {
     const today = new Date();
     const month = today.getMonth(); // 0-11
     const year = today.getFullYear();
 
     // Term logic based on Philippine school calendar
-    // 1st Term: June (5) - August (7)
-    // 2nd Term: September (8) - November (10)
-    // 3rd Term: December (11) - May (4) of next year
-    if (month >= 5 && month <= 7) {
+    if (month >= 5 && month <= 8) {
+      // June to September (1st Term)
       return { term: '1st Term', year: year.toString() };
-    } else if (month >= 8 && month <= 10) {
+    } else if (month >= 8 && month <= 11) {
+      // September to December (2nd Term)
       return { term: '2nd Term', year: year.toString() };
+    } else if (month >= 0 && month <= 3) {
+      // January to April (3rd Term of previous school year)
+      return { term: '3rd Term', year: (year - 1).toString() };
     } else {
-      // December to May is 3rd Term (uses previous year for school year)
-      return { term: '3rd Term', year: (month >= 11 ? year : year - 1).toString() };
+      // May is between terms, default to 3rd Term of previous school year
+      return { term: '3rd Term', year: (year - 1).toString() };
     }
   };
 
@@ -114,24 +120,58 @@ export default function StudentProfile() {
   const years = Array.from({ length: 5 }, (_, i) => (currentYear - i).toString());
 
   // Function to generate all dates for a given term
+  // Philippine school calendar (updated to specific weeks):
+  // 1st Term: 2nd week June to 2nd week September
+  // 2nd Term: 3rd week September to 2nd week December
+  // 3rd Term: 2nd week January to 1st week April (next calendar year)
   const generateTermDates = (term: string, year: string): Date[] => {
     const yearNum = parseInt(year);
     let startDate: Date;
     let endDate: Date;
 
     switch (term) {
-      case '1st Term':
-        startDate = new Date(yearNum, 5, 1); // June 1st
-        endDate = new Date(yearNum, 7, 31); // August 31st
+      case '1st Term': {
+        // 2nd week of June
+        startDate = new Date(yearNum, 5, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (2 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 2nd week of September
+        endDate = new Date(yearNum, 8, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (2 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
         break;
-      case '2nd Term':
-        startDate = new Date(yearNum, 8, 1); // September 1st
-        endDate = new Date(yearNum, 10, 30); // November 30th
+      }
+      case '2nd Term': {
+        // 3rd week of September
+        startDate = new Date(yearNum, 8, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (3 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 2nd week of December
+        endDate = new Date(yearNum, 11, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (2 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
         break;
-      case '3rd Term':
-        startDate = new Date(yearNum + 1, 0, 1); // January 1st of next year
-        endDate = new Date(yearNum + 1, 2, 31); // March 31st of next year
+      }
+      case '3rd Term': {
+        // 2nd week of January (next calendar year)
+        startDate = new Date(yearNum + 1, 0, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (2 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 1st week of April (next calendar year)
+        endDate = new Date(yearNum + 1, 3, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (1 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
         break;
+      }
       default:
         return [];
     }
@@ -195,13 +235,33 @@ export default function StudentProfile() {
     }
   }, [id, selectedTerm, selectedYear]);
 
+  // Fetch filtered academics when term/year changes or on initial load
+  useEffect(() => {
+    if (typeof id !== 'string') return;
+    if (selectedTerm && selectedYear) {
+      fetchStudentAcademics(id, selectedTerm, selectedYear)
+        .then(filteredAcademics => {
+          setAcademics(filteredAcademics);
+        })
+        .catch(err => {
+          console.error('Error fetching filtered academics:', err);
+        });
+    }
+  }, [id, selectedTerm, selectedYear]);
+
+  // Clear AI summary when term/year changes to force regeneration with new filters
+  useEffect(() => {
+    setAiSummary('');
+  }, [selectedTerm, selectedYear]);
+
   // Handle AI summary generation when user clicks the generate button
   // Fetches the AI summary from the backend and updates the state
+  // Supports term and year filtering
   const handleGenerateSummary = async () => {
     if (typeof id !== 'string') return;
     setLoadingSummary(true);
     try {
-      const summary = await fetchStudentAISummary(id);
+      const summary = await fetchStudentAISummary(id, selectedTerm, selectedYear);
       setAiSummary(summary.aiSummary);
     } catch (error) {
       console.error('Error generating AI summary:', error);
@@ -222,8 +282,14 @@ export default function StudentProfile() {
       } else {
         await createAcademicRecord(id, academicForm);
       }
-      const updatedAcademics = await fetchStudentAcademics(id);
-      setAcademics(updatedAcademics);
+      // Refresh academics based on current filter state
+      if (selectedTerm && selectedYear) {
+        const updatedAcademics = await fetchStudentAcademics(id, selectedTerm, selectedYear);
+        setAcademics(updatedAcademics);
+      } else {
+        const updatedAcademics = await fetchStudentAcademics(id);
+        setAcademics(updatedAcademics);
+      }
       setShowAcademicModal(false);
       setEditingAcademic(null);
       setAcademicForm({
@@ -247,8 +313,14 @@ export default function StudentProfile() {
     try {
       await deleteAcademicRecord(academicId);
       if (typeof id === 'string') {
-        const updatedAcademics = await fetchStudentAcademics(id);
-        setAcademics(updatedAcademics);
+        // Refresh academics based on current filter state
+        if (selectedTerm && selectedYear) {
+          const updatedAcademics = await fetchStudentAcademics(id, selectedTerm, selectedYear);
+          setAcademics(updatedAcademics);
+        } else {
+          const updatedAcademics = await fetchStudentAcademics(id);
+          setAcademics(updatedAcademics);
+        }
       }
     } catch (error) {
       console.error('Error deleting academic record:', error);
@@ -530,6 +602,55 @@ export default function StudentProfile() {
           </div>
         ) : tab === 'Academic' ? (
           <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-6">
+            {/* Term and Year Filters */}
+            <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Filter size={18} className="text-gray-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Select Term and Year</h3>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Term:</label>
+                  <select
+                    value={selectedTerm}
+                    onChange={(e) => setSelectedTerm(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {terms.map((term) => (
+                      <option key={term} value={term}>
+                        {term}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Year:</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {(selectedTerm || selectedYear) && (
+                  <button
+                    onClick={() => {
+                      setSelectedTerm(getCurrentTerm().term);
+                      setSelectedYear(getCurrentTerm().year);
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    <X size={14} /> Reset to Current
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900">Academic Performance</h3>
               <button
@@ -543,20 +664,38 @@ export default function StudentProfile() {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">General Average</span>
-                  <span className="text-lg font-bold text-gray-900">{student.generalAverage}%</span>
+                  <span className="text-sm text-gray-600">
+                    {selectedTerm && selectedYear ? `${selectedTerm} General Average` : 'General Average'}
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">
+                    {selectedTerm && selectedYear && academics.length > 0
+                      ? `${academics[0]?.overall_average || 'N/A'}%`
+                      : `${student.generalAverage}%`
+                    }
+                  </span>
                 </div>
-                <ProgressBar value={student.generalAverage} className="mt-2" />
+                <ProgressBar 
+                  value={selectedTerm && selectedYear && academics.length > 0
+                    ? parseFloat(academics[0]?.overall_average || '0')
+                    : student.generalAverage} 
+                  className="mt-2" 
+                />
               </div>
               <div className="rounded-lg border border-gray-200 bg-white p-4">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-600">Grade Level</span>
-                  <span className="text-lg font-bold text-gray-900">{student.grade}</span>
+                  <span className="text-sm text-gray-600">
+                    {selectedTerm && selectedYear ? `${selectedTerm} Records` : 'Grade Level'}
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">
+                    {selectedTerm && selectedYear ? academics.length : student.grade}
+                  </span>
                 </div>
               </div>
             </div>
             <div className="mt-4 rounded-lg border border-gray-200 bg-white p-4">
-              <h4 className="mb-3 font-semibold text-gray-900">Academic Records</h4>
+              <h4 className="mb-3 font-semibold text-gray-900">
+                {selectedTerm && selectedYear ? `${selectedTerm} ${selectedYear} - Academic Records` : 'Academic Records'}
+              </h4>
               {academics.length === 0 ? (
                 <p className="text-sm text-gray-500">No academic records found.</p>
               ) : (
@@ -623,7 +762,7 @@ export default function StudentProfile() {
                 <Filter size={18} className="text-gray-600" />
                 <h3 className="text-sm font-semibold text-gray-900">Select Term and Year</h3>
               </div>
-              <div className="flex flex-wrap gap-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <div className="flex items-center gap-2">
                   <label className="text-sm text-gray-600">Term:</label>
                   <select
@@ -652,6 +791,17 @@ export default function StudentProfile() {
                     ))}
                   </select>
                 </div>
+                {(selectedTerm || selectedYear) && (
+                  <button
+                    onClick={() => {
+                      setSelectedTerm(getCurrentTerm().term);
+                      setSelectedYear(getCurrentTerm().year);
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    <X size={14} /> Reset to Current
+                  </button>
+                )}
               </div>
             </div>
 
@@ -714,16 +864,21 @@ export default function StudentProfile() {
                   const attendanceMap = new Map(
                     attendance.map(record => {
                       const attendanceDate = new Date(record.attendance_date);
-                      // Normalize to local date to avoid timezone issues
-                      const normalizedDate = new Date(attendanceDate.getFullYear(), attendanceDate.getMonth(), attendanceDate.getDate());
-                      return [normalizedDate.toDateString(), record];
+                      // Create date string in local format (YYYY-MM-DD)
+                      const dateStr = attendanceDate.getFullYear() + '-' + 
+                        String(attendanceDate.getMonth() + 1).padStart(2, '0') + '-' + 
+                        String(attendanceDate.getDate()).padStart(2, '0');
+                      return [dateStr, record];
                     })
                   );
 
                   return (
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {termDates.map((date) => {
-                        const dateStr = date.toDateString();
+                        // Create date string in local format (YYYY-MM-DD)
+                        const dateStr = date.getFullYear() + '-' + 
+                          String(date.getMonth() + 1).padStart(2, '0') + '-' + 
+                          String(date.getDate()).padStart(2, '0');
                         const record = attendanceMap.get(dateStr);
                         const isPresent = record?.present;
                         const hasRecord = !!record;
@@ -871,6 +1026,55 @@ export default function StudentProfile() {
           </div>
         ) : tab === 'Summary' ? (
           <div className="mt-6 rounded-xl border border-gray-200 bg-gray-50 p-6">
+            {/* Term and Year Filters */}
+            <div className="mb-4 rounded-xl border border-gray-200 bg-white p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Filter size={18} className="text-gray-600" />
+                <h3 className="text-sm font-semibold text-gray-900">Select Term and Year for Summary</h3>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Term:</label>
+                  <select
+                    value={selectedTerm}
+                    onChange={(e) => setSelectedTerm(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {terms.map((term) => (
+                      <option key={term} value={term}>
+                        {term}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600">Year:</label>
+                  <select
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  >
+                    {years.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {(selectedTerm || selectedYear) && (
+                  <button
+                    onClick={() => {
+                      setSelectedTerm(getCurrentTerm().term);
+                      setSelectedYear(getCurrentTerm().year);
+                    }}
+                    className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    <X size={14} /> Reset to Current
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900">AI-Generated Summary</h3>
               {!aiSummary && !loadingSummary && (
@@ -893,7 +1097,9 @@ export default function StudentProfile() {
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Sparkles size={18} className="text-blue-600" />
-                    <h4 className="font-semibold text-gray-900">Student Summary</h4>
+                    <h4 className="font-semibold text-gray-900">
+                      Student Summary{selectedTerm && selectedYear ? ` (${selectedTerm} ${selectedYear})` : ''}
+                    </h4>
                   </div>
                   <button
                     onClick={handleGenerateSummary}

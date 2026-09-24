@@ -60,7 +60,12 @@ export default function Faculty() {
   const [calendarStartDate, setCalendarStartDate] = useState('');
   const [calendarEndDate, setCalendarEndDate] = useState('');
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
+  const [attendanceDate, setAttendanceDate] = useState(() => {
+    const now = new Date();
+    const gmt8Offset = 8 * 60 * 60 * 1000;
+    const gmt8Date = new Date(now.getTime() + gmt8Offset);
+    return gmt8Date.toISOString().split('T')[0];
+  });
   const [alertModal, setAlertModal] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' });
   const [showAcademicRecordModal, setShowAcademicRecordModal] = useState(false);
   const [showAddAcademicRecordModal, setShowAddAcademicRecordModal] = useState(false);
@@ -104,89 +109,64 @@ export default function Faculty() {
       if (active) {
         setStudents(studentsData.data);
         setDashboardStats(stats);
-
-        // Fetch today's attendance for all students
-        const todayDate = new Date().toISOString().split('T')[0];
-        const studentIds = studentsData.data.map((s: any) => s.id);
-
-        client.post('/attendance/batch', { student_ids: studentIds, attendance_date: todayDate })
-          .then(({ data }) => {
-            if (active && data.data) {
-              const attendanceMap: Record<string, 'present' | 'absent'> = {};
-              data.data.forEach((record: any) => {
-                attendanceMap[record.student_id] = record.present ? 'present' : 'absent';
-              });
-              setAttendance(attendanceMap);
-            }
-          })
-          .catch(err => {
-            console.error('Error fetching today\'s attendance:', err);
-          });
-
-        // Fetch early warning predictions
-        if (studentsData.data.length > 0) {
-          const studentIds = studentsData.data.map((s: any) => s.id);
-          fetchEarlyWarningBatchPredictions(studentIds, selectedTerm, selectedYear).then(predictions => {
-            if (active) {
-              const predictionsMap: Record<string, EarlyWarningPrediction> = {};
-              predictions.forEach(p => {
-                predictionsMap[p.student_id] = p;
-              });
-              setEarlyWarnings(predictionsMap);
-            }
-          }).catch((err: any) => {
-            console.error('Error fetching early warnings:', err);
-          });
-
-          // Check for consecutive absences
-          client.post('/attendance/batch', { student_ids: studentIds, attendance_date: todayDate })
-            .then(({ data }) => {
-              if (active && data.data) {
-                const attendanceHistory: Record<string, any[]> = {};
-                data.data.forEach((record: any) => {
-                  if (!attendanceHistory[record.student_id]) {
-                    attendanceHistory[record.student_id] = [];
-                  }
-                  attendanceHistory[record.student_id].push(record);
-                });
-
-                // Check for 5+ consecutive absences
-                Object.entries(attendanceHistory).forEach(([studentId, records]) => {
-                  const sortedRecords = records.sort((a, b) => 
-                    new Date(a.attendance_date).getTime() - new Date(b.attendance_date).getTime()
-                  );
-                  
-                  let consecutiveAbsences = 0;
-                  const student = studentsData.data.find((s: any) => s.id === studentId);
-                  
-                  for (let i = sortedRecords.length - 1; i >= 0; i--) {
-                    if (sortedRecords[i].present === false) {
-                      consecutiveAbsences++;
-                      if (consecutiveAbsences >= 5) {
-                        if (student) {
-                          warning(
-                            'Consecutive Absences Alert',
-                            `${student.firstName} ${student.lastName} has ${consecutiveAbsences} consecutive absences`
-                          );
-                        }
-                        break;
-                      }
-                    } else {
-                      consecutiveAbsences = 0;
-                    }
-                  }
-                });
-              }
-            }).catch((err: any) => {
-              console.error('Error checking consecutive absences:', err);
-            });
-        }
       }
+    }).catch(err => {
+      console.error('Error fetching initial data:', err);
     });
     return () => {
       active = false;
     };
-  }, [user, query, selectedTerm, selectedYear]);
+  }, [user, selectedTerm, selectedYear]);
+
+  // Load attendance when attendance date changes
+  useEffect(() => {
+    if (students.length === 0) return;
+    
+    let active = true;
+    const studentIds = students.map((s: any) => s.id);
+
+    client.post('/attendance/batch', { student_ids: studentIds, attendance_date: attendanceDate })
+      .then(({ data }) => {
+        if (active && data.data) {
+          const attendanceMap: Record<string, 'present' | 'absent'> = {};
+          data.data.forEach((record: any) => {
+            attendanceMap[record.student_id] = record.present ? 'present' : 'absent';
+          });
+          setAttendance(attendanceMap);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching attendance for date:', err);
+      });
+    
+    return () => {
+      active = false;
+    };
+  }, [attendanceDate, students]);
+
+  // Fetch early warning predictions when students are loaded
+  useEffect(() => {
+    if (students.length === 0) return;
+    
+    let active = true;
+    const studentIds = students.map((s: any) => s.id);
+    
+    fetchEarlyWarningBatchPredictions(studentIds, selectedTerm, selectedYear).then(predictions => {
+      if (active) {
+        const predictionsMap: Record<string, EarlyWarningPrediction> = {};
+        predictions.forEach(p => {
+          predictionsMap[p.student_id] = p;
+        });
+        setEarlyWarnings(predictionsMap);
+      }
+    }).catch((err: any) => {
+      console.error('Error fetching early warnings:', err);
+    });
+    
+    return () => {
+      active = false;
+    };
+  }, [students, selectedTerm, selectedYear]);
 
   // Recalculate risk scores when term/year filters change
   const handleRecalculateRiskScores = async () => {
@@ -270,13 +250,20 @@ export default function Faculty() {
   const getAttendanceForDate = (date: Date, studentId: string) => {
     const history = studentAttendanceHistory[studentId] || [];
     const calendarDate = new Date(date);
-    calendarDate.setHours(0, 0, 0, 0);
-    const calendarDateStr = calendarDate.toISOString().split('T')[0];
+    
+    // Create date string in local format (YYYY-MM-DD)
+    const calendarDateStr = calendarDate.getFullYear() + '-' + 
+      String(calendarDate.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(calendarDate.getDate()).padStart(2, '0');
 
     return history.find((record: any) => {
       const recordDate = new Date(record.attendance_date);
-      recordDate.setHours(0, 0, 0, 0);
-      const recordDateStr = recordDate.toISOString().split('T')[0];
+      
+      // Create record date string in local format
+      const recordDateStr = recordDate.getFullYear() + '-' + 
+        String(recordDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(recordDate.getDate()).padStart(2, '0');
+      
       return calendarDateStr === recordDateStr;
     });
   };
@@ -287,9 +274,11 @@ export default function Faculty() {
   };
 
   const isFutureDate = (date: Date) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date > today;
+    const now = new Date();
+    const gmt8Offset = 8 * 60 * 60 * 1000;
+    const todayGMT8 = new Date(now.getTime() + gmt8Offset);
+    todayGMT8.setHours(0, 0, 0, 0);
+    return date > todayGMT8;
   };
 
   const isDateInRange = (date: Date) => {
@@ -390,13 +379,13 @@ export default function Faculty() {
             <Filter size={18} className="text-gray-600" />
             <h3 className="text-sm font-semibold text-gray-900">Filter by Term and Year</h3>
           </div>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600">Term:</label>
               <select
                 value={selectedTerm}
                 onChange={(e) => setSelectedTerm(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
               >
                 <option value="">All Terms</option>
                 {terms.map((term) => (
@@ -411,7 +400,7 @@ export default function Faculty() {
               <select
                 value={selectedYear}
                 onChange={(e) => setSelectedYear(e.target.value)}
-                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 w-full sm:w-auto"
               >
                 <option value="">All Years</option>
                 {years.map((year) => (
@@ -422,7 +411,7 @@ export default function Faculty() {
               </select>
             </div>
             {(selectedTerm || selectedYear) && (
-              <>
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <button
                   onClick={handleRecalculateRiskScores}
                   disabled={isRecalculating}
@@ -439,13 +428,13 @@ export default function Faculty() {
                 >
                   Clear Filters
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
 
         {/* Header Cards */}
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Total Students" value={dashboardStats?.totalStudents ?? 0} caption="Active enrollment" icon={Users} iconColor="text-green-600" valueColor="text-green-600" />
           <StatCard label="Current Date" value={currentDate} caption="Today" icon={Calendar} iconColor="text-blue-600" valueColor="text-blue-600" />
           <StatCard label="Present" value={Object.values(attendance).filter(v => v === 'present').length} caption="Today's attendance" icon={CheckCircle} iconColor="text-green-600" valueColor="text-green-600" />
@@ -496,7 +485,7 @@ export default function Faculty() {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((s) => {
               return (
                 <div
@@ -607,7 +596,24 @@ export default function Faculty() {
                     <input
                       type="date"
                       value={attendanceDate}
-                      onChange={(e) => setAttendanceDate(e.target.value)}
+                      onChange={(e) => {
+                        setAttendanceDate(e.target.value);
+                        // Auto-load attendance for the new date
+                        const studentIds = students.map((s: any) => s.id);
+                        client.post('/attendance/batch', { student_ids: studentIds, attendance_date: e.target.value })
+                          .then(({ data }) => {
+                            if (data.data) {
+                              const attendanceMap: Record<string, 'present' | 'absent'> = {};
+                              data.data.forEach((record: any) => {
+                                attendanceMap[record.student_id] = record.present ? 'present' : 'absent';
+                              });
+                              setAttendance(attendanceMap);
+                            }
+                          })
+                          .catch(err => {
+                            console.error('Error fetching attendance for date:', err);
+                          });
+                      }}
                       className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
                     />
                     <button
@@ -633,7 +639,10 @@ export default function Faculty() {
                     </button>
                     <button
                       onClick={async () => {
-                        const todayDate = new Date().toISOString().split('T')[0];
+                        const now = new Date();
+                        const gmt8Offset = 8 * 60 * 60 * 1000;
+                        const todayGMT8 = new Date(now.getTime() + gmt8Offset);
+                        const todayDate = todayGMT8.toISOString().split('T')[0];
                         setAttendanceDate(todayDate);
                         const studentIds = students.map((s: any) => s.id);
                         client.post('/attendance/batch', { student_ids: studentIds, attendance_date: todayDate })

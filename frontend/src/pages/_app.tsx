@@ -1,6 +1,7 @@
 import type { AppProps } from 'next/app';
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
 import '../styles/globals.css';
 import { AuthProvider, useAuth, Role } from '@/context/AuthContext';
 import { NotificationProvider } from '@/context/NotificationContext';
@@ -72,15 +73,21 @@ function Guard({ children }: { children: React.ReactNode }) {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <NotificationProvider>
-      <AuthProvider>
-        <Guard>
-          <main className="min-h-screen bg-white">
-            <Component {...pageProps} />
-          </main>
-          <NotificationContainer />
-        </Guard>
-      </AuthProvider>
-    </NotificationProvider>
+    <>
+      <Head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#ffffff" />
+      </Head>
+      <NotificationProvider>
+        <AuthProvider>
+          <Guard>
+            <main className="min-h-screen bg-white">
+              <Component {...pageProps} />
+            </main>
+            <NotificationContainer />
+          </Guard>
+        </AuthProvider>
+      </NotificationProvider>
+    </>
   );
 }

@@ -3,31 +3,73 @@ import { AcademicRecord } from '../models/AcademicRecord';
 import { RiskScore } from '../models/RiskScore';
 import { Student } from '../models/Student';
 
-// Helper function to get term start date
+// Helper function to get term start date (matching seed script definitions)
 function getTermStartDate(term: string, year: string): Date | null {
   const yearNum = parseInt(year);
   switch (term) {
-    case '1st Term':
-      return new Date(yearNum, 8, 1); // September 1st
-    case '2nd Term':
-      return new Date(yearNum, 11, 1); // December 1st
-    case '3rd Term':
-      return new Date(yearNum + 1, 4, 1); // May 1st of next year
+    case '1st Term': {
+      // 2nd week of June
+      const date = new Date(yearNum, 5, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    case '2nd Term': {
+      // 3rd week of September
+      const date = new Date(yearNum, 8, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (3 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+    case '3rd Term': {
+      // 2nd week of January (next calendar year)
+      const date = new Date(yearNum + 1, 0, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
     default:
       return null;
   }
 }
 
-// Helper function to get term end date
+// Helper function to get term end date (matching seed script definitions)
 function getTermEndDate(term: string, year: string): Date | null {
   const yearNum = parseInt(year);
   switch (term) {
-    case '1st Term':
-      return new Date(yearNum, 10, 30); // November 30th
-    case '2nd Term':
-      return new Date(yearNum + 1, 3, 30); // April 30th of next year
-    case '3rd Term':
-      return new Date(yearNum + 1, 8, 30); // August 30th of next year
+    case '1st Term': {
+      // 2nd week of September
+      const date = new Date(yearNum, 8, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(23, 59, 59, 999);
+      return date;
+    }
+    case '2nd Term': {
+      // 2nd week of December
+      const date = new Date(yearNum, 11, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(23, 59, 59, 999);
+      return date;
+    }
+    case '3rd Term': {
+      // 1st week of April (next calendar year)
+      const date = new Date(yearNum + 1, 3, 1);
+      const dayOfWeek = date.getDay();
+      const daysToAdd = (1 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+      date.setDate(date.getDate() + daysToAdd);
+      date.setHours(23, 59, 59, 999);
+      return date;
+    }
     default:
       return null;
   }
@@ -103,10 +145,21 @@ export async function calculateRiskScore(studentId: string, term?: string, year?
     let currentTerm = '1st Term';
     let academicYear = currentYear.toString();
     
-    if (currentMonth >= 11 || currentMonth <= 3) {
+    // Updated term logic based on new definitions:
+    // 1st Term: June (5) to September (8)
+    // 2nd Term: September (8) to December (11)
+    // 3rd Term: January (0) to April (3) of next calendar year
+    if (currentMonth >= 0 && currentMonth <= 3) {
+      currentTerm = '3rd Term';
+      academicYear = (currentYear - 1).toString();
+    } else if (currentMonth >= 5 && currentMonth <= 8) {
+      currentTerm = '1st Term';
+      academicYear = currentYear.toString();
+    } else if (currentMonth >= 8 && currentMonth <= 11) {
       currentTerm = '2nd Term';
-      academicYear = currentMonth >= 11 ? currentYear.toString() : (currentYear - 1).toString();
-    } else if (currentMonth >= 4 && currentMonth <= 8) {
+      academicYear = currentYear.toString();
+    } else {
+      // April (3) or May (4) is between terms, default to 3rd Term of previous school year
       currentTerm = '3rd Term';
       academicYear = (currentYear - 1).toString();
     }
@@ -135,10 +188,21 @@ export async function calculateRiskScore(studentId: string, term?: string, year?
     let currentTerm = '1st Term';
     let academicYear = currentYear.toString();
     
-    if (currentMonth >= 11 || currentMonth <= 3) {
+    // Updated term logic based on new definitions:
+    // 1st Term: June (5) to September (8)
+    // 2nd Term: September (8) to December (11)
+    // 3rd Term: January (0) to April (3) of next calendar year
+    if (currentMonth >= 0 && currentMonth <= 3) {
+      currentTerm = '3rd Term';
+      academicYear = (currentYear - 1).toString();
+    } else if (currentMonth >= 5 && currentMonth <= 8) {
+      currentTerm = '1st Term';
+      academicYear = currentYear.toString();
+    } else if (currentMonth >= 8 && currentMonth <= 11) {
       currentTerm = '2nd Term';
-      academicYear = currentMonth >= 11 ? currentYear.toString() : (currentYear - 1).toString();
-    } else if (currentMonth >= 4 && currentMonth <= 8) {
+      academicYear = currentYear.toString();
+    } else {
+      // April (3) or May (4) is between terms, default to 3rd Term of previous school year
       currentTerm = '3rd Term';
       academicYear = (currentYear - 1).toString();
     }
@@ -373,15 +437,23 @@ export async function updateRiskScoreForStudent(studentId: string, term?: string
       const currentMonth = new Date().getMonth();
       const currentYear = new Date().getFullYear();
       
-      if (currentMonth >= 11 || currentMonth <= 3) {
-        targetTerm = '2nd Term';
-        targetYear = currentMonth >= 11 ? currentYear.toString() : (currentYear - 1).toString();
-      } else if (currentMonth >= 4 && currentMonth <= 8) {
+      // Updated term logic based on new definitions:
+      // 1st Term: June (5) to September (8)
+      // 2nd Term: September (8) to December (11)
+      // 3rd Term: January (0) to April (3) of next calendar year
+      if (currentMonth >= 0 && currentMonth <= 3) {
         targetTerm = '3rd Term';
         targetYear = (currentYear - 1).toString();
-      } else {
+      } else if (currentMonth >= 5 && currentMonth <= 8) {
         targetTerm = '1st Term';
         targetYear = currentYear.toString();
+      } else if (currentMonth >= 8 && currentMonth <= 11) {
+        targetTerm = '2nd Term';
+        targetYear = currentYear.toString();
+      } else {
+        // April (3) or May (4) is between terms, default to 3rd Term of previous school year
+        targetTerm = '3rd Term';
+        targetYear = (currentYear - 1).toString();
       }
     }
     

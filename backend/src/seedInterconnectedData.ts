@@ -53,8 +53,8 @@ async function seedInterconnectedData() {
     console.log('📊 Risk scores ready');
 
     // Intervention type mappings
-    const interventionTypes = ['Mentoring', 'Tutoring', 'Counseling', 'Family Meeting'];
-    const scheduleTypes = ['Mentoring', 'Tutoring', 'Counseling', 'Family Meeting'];
+    const interventionTypes = ['Mentoring', 'Peer Tutoring', 'Counseling/Coaching', 'Parent Conference'];
+    const scheduleTypes = ['Mentoring', 'Peer Tutoring', 'Counseling/Coaching', 'Parent Conference'];
     const statuses = ['Pending', 'Active', 'Completed', 'Cancelled'];
     const scheduleStatuses = ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled', 'No-Show'];
     const taskPriorities = ['Low', 'Medium', 'High'];
@@ -78,9 +78,9 @@ async function seedInterconnectedData() {
         // Generate intervention ID
         const typePrefixMap: Record<string, string> = {
           'Mentoring': 'M',
-          'Tutoring': 'T',
-          'Counseling': 'C',
-          'Family Meeting': 'F',
+          'Peer Tutoring': 'T',
+          'Counseling/Coaching': 'C',
+          'Parent Conference': 'P',
         };
         const prefix = typePrefixMap[interventionType] || 'X';
         const currentYear = new Date().getFullYear();

@@ -121,7 +121,7 @@ export interface Schedule {
   student_name: string;
   date: string;
   time: string;
-  type: 'Mentoring' | 'Tutoring' | 'Counseling' | 'Family Meeting'; // Database values
+  type: 'Mentoring' | 'Peer Tutoring' | 'Counseling/Coaching' | 'Parent Conference'; // Database values
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No-Show';
   notes?: string;
   intervention_id?: string;
@@ -387,6 +387,7 @@ export async function updateSchedule(id: string, schedule: {
   time?: string;
   type?: string;
   notes?: string;
+  intervention_id?: string;
 }): Promise<Schedule> {
   try {
     const { data } = await client.put<{ data: Schedule }>(`/schedules/${id}`, schedule);
@@ -661,6 +662,7 @@ export interface User {
   department?: string;
   section?: string;
   isActive: boolean;
+  lastLogin?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -781,9 +783,15 @@ export interface StudentAISummary {
 // Fetch AI-generated summary for a specific student
 // Uses a 30-second timeout for AI generation
 // Returns the AI analysis of the student's data
-export async function fetchStudentAISummary(studentId: string): Promise<{ data: any; aiSummary: string }> {
+// Supports optional term and year filtering
+export async function fetchStudentAISummary(studentId: string, term?: string, year?: string): Promise<{ data: any; aiSummary: string }> {
   try {
+    const params: any = {};
+    if (term) params.term = term;
+    if (year) params.year = year;
+    
     const { data } = await client.get<{ data: { data: any; aiSummary: string } }>(`/students/${studentId}/ai-summary`, {
+      params,
       timeout: 30000 // 30 seconds timeout for AI generation
     });
     return data.data;
@@ -795,9 +803,13 @@ export async function fetchStudentAISummary(studentId: string): Promise<{ data: 
 
 // Fetch academic records for a specific student
 // Returns all academic records sorted by creation date
-export async function fetchStudentAcademics(studentId: string): Promise<any[]> {
+// Supports optional term and year filtering
+export async function fetchStudentAcademics(studentId: string, term?: string, year?: string): Promise<any[]> {
   try {
-    const { data } = await client.get<{ data: any[] }>(`/students/${studentId}/academics`);
+    const params: any = {};
+    if (term) params.term = term;
+    if (year) params.year = year;
+    const { data } = await client.get<{ data: any[] }>(`/students/${studentId}/academics`, { params });
     return data.data || [];
   } catch (error) {
     console.error('Error fetching student academics:', error);
@@ -910,7 +922,7 @@ export async function getStudentAttendance(studentId: string, startDate?: string
     if (endDate) params.end_date = endDate;
     if (term) params.term = term;
     if (year) params.year = year;
-    const { data } = await client.get<{ data: any[] }>(`/attendance/student/${studentId}`, { params });
+    const { data } = await client.get<{ data: any[] }>(`/students/${studentId}/attendance`, { params });
     return data.data || [];
   } catch (error) {
     console.error('Error fetching student attendance:', error);
@@ -939,6 +951,38 @@ export async function deleteUser(id: string): Promise<void> {
     await client.delete(`/faculty/${id}`);
   } catch (error) {
     console.error('Error deleting user:', error);
+    throw error;
+  }
+}
+
+// Archive a user account (sets isActive to false)
+export async function archiveUser(id: string): Promise<User> {
+  try {
+    const { data } = await client.put<{ data: User }>(`/faculty/${id}`, { isActive: false });
+    return data.data;
+  } catch (error) {
+    console.error('Error archiving user:', error);
+    throw error;
+  }
+}
+
+// Restore an archived user account (sets isActive to true)
+export async function restoreUser(id: string): Promise<User> {
+  try {
+    const { data } = await client.put<{ data: User }>(`/faculty/${id}`, { isActive: true });
+    return data.data;
+  } catch (error) {
+    console.error('Error restoring user:', error);
+    throw error;
+  }
+}
+
+// Reset user password
+export async function resetUserPassword(id: string, newPassword: string): Promise<void> {
+  try {
+    await client.post(`/faculty/${id}/reset-password`, { password: newPassword });
+  } catch (error) {
+    console.error('Error resetting user password:', error);
     throw error;
   }
 }

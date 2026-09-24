@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { Schedule } from '../models/Schedule';
 import { Student } from '../models/Student';
 import { Faculty } from '../models/Faculty';
+import { notificationService } from '../services/notificationService';
 
 const router = Router();
 
@@ -21,13 +22,67 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    let finalInterventionId = intervention_id;
+
     // If intervention_id is provided, verify it exists
     if (intervention_id) {
       const { Intervention } = await import('../models/Intervention');
-      const intervention = await Intervention.findById(intervention_id);
+      const intervention = await Intervention.findOne({ intervention_id: intervention_id });
       if (!intervention) {
         return res.status(404).json({ error: 'Intervention not found' });
       }
+      finalInterventionId = intervention_id; // Use the readable ID directly
+    } else {
+      // If intervention_id is blank/undefined, create a new intervention
+      const { Intervention } = await import('../models/Intervention');
+      const { RiskScore } = await import('../models/RiskScore');
+
+      // Find or create a risk score for this student
+      let riskScore = await RiskScore.findOne({ student_id: student_id });
+      if (!riskScore) {
+        riskScore = await RiskScore.create({
+          student_id: student_id,
+          overall_score: 50,
+          attendance_score: 50,
+          academic_score: 50,
+          behavior_score: 50,
+          calculated_at: new Date(),
+        });
+      }
+
+      // Generate intervention ID
+      const typePrefixMap: Record<string, string> = {
+        'Mentoring': 'M',
+        'Peer Tutoring': 'T',
+        'Counseling/Coaching': 'C',
+        'Parent Conference': 'P',
+      };
+      const prefix = typePrefixMap[type || 'Counseling/Coaching'] || 'X';
+      const currentYear = new Date().getFullYear();
+      const lastIntervention = await Intervention.findOne({
+        intervention_id: new RegExp(`^${prefix}${currentYear}`),
+      }).sort({ intervention_id: -1 });
+      let nextNumber = 1;
+      if (lastIntervention) {
+        const lastNumber = parseInt(lastIntervention.intervention_id.slice(-5));
+        nextNumber = lastNumber + 1;
+      }
+      const interventionIdString = `${prefix}${currentYear}${String(nextNumber).padStart(5, '0')}`;
+
+      // Create new intervention
+      const newIntervention = new Intervention({
+        intervention_id: interventionIdString,
+        student_id: student_id,
+        score_id: riskScore._id,
+        intervention_type: type || 'Counseling/Coaching',
+        description: notes || `Scheduled ${type || 'Counseling/Coaching'} session`,
+        start_date: new Date(date),
+        status: 'Active',
+        schedule_id: undefined, // Will be set after schedule is created
+      });
+
+      await newIntervention.save();
+      finalInterventionId = interventionIdString; // Use the readable ID directly
     }
 
     const schedule = new Schedule({
@@ -35,13 +90,31 @@ router.post('/', async (req: Request, res: Response) => {
       student_name,
       date: new Date(date),
       time,
-      type: type || 'Counseling',
+      type: type || 'Counseling/Coaching',
       notes,
       created_by,
-      intervention_id,
+      intervention_id: finalInterventionId, // Now stores the readable ID
     });
 
     await schedule.save();
+
+    // If we created a new intervention, update it with the schedule_id
+    if (!intervention_id && finalInterventionId) {
+      const { Intervention } = await import('../models/Intervention');
+      await Intervention.findOneAndUpdate({ intervention_id: finalInterventionId }, { schedule_id: schedule._id });
+    }
+
+    // Create notification for the schedule
+    if (created_by) {
+      await notificationService.createScheduleNotification(
+        student_id,
+        type || 'Counseling/Coaching',
+        date,
+        time,
+        created_by
+      );
+    }
+
     res.status(201).json({ data: schedule });
   } catch (error) {
     console.error('Error creating schedule:', error);
@@ -68,7 +141,6 @@ router.get('/', async (req: Request, res: Response) => {
     const filter = assignedStudentIds ? { student_id: { $in: assignedStudentIds } } : {};
     
     const schedules = await Schedule.find(filter)
-      .sort({ date: 1, time: 1 })
       .exec();
 
     res.json({ data: schedules });
@@ -83,7 +155,6 @@ router.get('/student/:studentId', async (req: Request, res: Response) => {
   try {
     const { studentId } = req.params;
     const schedules = await Schedule.find({ student_id: studentId })
-      .sort({ date: 1, time: 1 })
       .exec();
 
     res.json({ data: schedules });
@@ -102,7 +173,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     // If intervention_id is being updated, verify it exists
     if (updates.intervention_id) {
       const { Intervention } = await import('../models/Intervention');
-      const intervention = await Intervention.findById(updates.intervention_id);
+      const intervention = await Intervention.findOne({ intervention_id: updates.intervention_id });
       if (!intervention) {
         return res.status(404).json({ error: 'Intervention not found' });
       }
@@ -272,6 +343,21 @@ router.patch('/:id/status', async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Schedule not found' });
     }
 
+    // Create notification based on status change
+    if (status === 'Completed') {
+      await notificationService.createScheduleCompletionNotification(
+        String(updatedSchedule.student_id),
+        updatedSchedule.type,
+        updatedSchedule.created_by || 'system'
+      );
+    } else if (status === 'Cancelled') {
+      await notificationService.createScheduleCancellationNotification(
+        String(updatedSchedule.student_id),
+        updatedSchedule.type,
+        updatedSchedule.created_by || 'system'
+      );
+    }
+
     res.json({ data: updatedSchedule });
   } catch (error) {
     console.error('Error updating schedule status:', error);
@@ -296,8 +382,8 @@ router.post('/:id/complete-with-intervention', async (req: Request, res: Respons
     // Check if schedule has an existing intervention_id
     let intervention;
     if (schedule.intervention_id) {
-      // Find existing intervention by ObjectId
-      intervention = await Intervention.findById(schedule.intervention_id);
+      // Find existing intervention by intervention_id string
+      intervention = await Intervention.findOne({ intervention_id: schedule.intervention_id });
       if (intervention) {
         // Append notes with date
         const today = new Date().toISOString().split('T')[0];
@@ -339,9 +425,9 @@ router.post('/:id/complete-with-intervention', async (req: Request, res: Respons
       // Generate intervention ID
       const typePrefixMap: Record<string, string> = {
         'Mentoring': 'M',
-        'Tutoring': 'T',
-        'Counseling': 'C',
-        'Family Meeting': 'F',
+        'Peer Tutoring': 'T',
+        'Counseling/Coaching': 'C',
+        'Parent Conference': 'P',
       };
       const prefix = typePrefixMap[intervention_type || schedule.type] || 'X';
       const currentYear = new Date().getFullYear();

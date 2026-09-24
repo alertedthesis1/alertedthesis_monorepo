@@ -7,6 +7,7 @@ export interface IAttendance extends Document {
   excused_absent: boolean;
   course_code: string;
   course_name?: string;
+  subject?: string;
   createdAt: Date;
 }
 
@@ -31,6 +32,7 @@ const attendanceSchema = new Schema<IAttendance>(
     },
     course_code: String,
     course_name: String,
+    subject: String,
   },
   { timestamps: true }
 );

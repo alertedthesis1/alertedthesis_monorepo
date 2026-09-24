@@ -18,11 +18,13 @@ import {
   FileText,
   Clock,
   X,
+  Archive,
+  RefreshCw,
 } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
 import { Role, useAuth } from '@/context/AuthContext';
 import axios from 'axios';
-import { fetchUsers, createUser, updateUser, deleteUser, User } from '@/lib/api';
+import { fetchUsers, createUser, updateUser, deleteUser, archiveUser, restoreUser, resetUserPassword, User } from '@/lib/api';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -46,6 +48,7 @@ interface ActivityLog {
   target_type?: string;
   target_id?: string;
   details?: any;
+  last_login?: string;
   timestamp: string;
 }
 
@@ -69,6 +72,9 @@ export default function Admin() {
   const [searchType, setSearchType] = useState<'name' | 'email' | 'role'>('name');
   const [showActions, setShowActions] = useState<string | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [showEditUserModal, setShowEditUserModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<ManagedUser | null>(null);
   const [addUserForm, setAddUserForm] = useState({
     name: '',
     email: '',
@@ -77,7 +83,20 @@ export default function Admin() {
     department: '',
     section: '',
   });
+  const [editUserForm, setEditUserForm] = useState({
+    name: '',
+    email: '',
+    role: 'counselor' as Role,
+    department: '',
+    section: '',
+  });
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    password: '',
+    confirmPassword: '',
+  });
   const [addingUser, setAddingUser] = useState(false);
+  const [editingUser, setEditingUser] = useState(false);
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -96,7 +115,7 @@ export default function Admin() {
         email: u.email,
         role: u.role as Role,
         status: u.isActive ? 'Active' : 'Inactive',
-        lastLogin: 'Never',
+        lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleString() : 'Never',
         department: u.department,
         isActive: u.isActive,
       }));
@@ -127,6 +146,7 @@ export default function Admin() {
         target_type: targetType,
         target_id: targetId,
         details,
+        last_login: new Date(),
       });
       fetchActivityLogs();
     } catch (error) {
@@ -176,6 +196,103 @@ export default function Admin() {
     } finally {
       setAddingUser(false);
     }
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    setEditingUser(true);
+    try {
+      await updateUser(selectedUser._id, {
+        name: editUserForm.name,
+        email: editUserForm.email,
+        role: editUserForm.role,
+        department: editUserForm.department,
+        section: editUserForm.role === 'faculty' ? editUserForm.section : undefined,
+      });
+      await logActivity('Updated User', 'User', editUserForm.email, { role: editUserForm.role });
+      alert('User updated successfully!');
+      setShowEditUserModal(false);
+      setSelectedUser(null);
+      loadUsers();
+    } catch (err) {
+      console.error(err);
+      alert('Failed to update user');
+    } finally {
+      setEditingUser(false);
+    }
+  };
+
+  const handleArchiveUser = async (user: ManagedUser) => {
+    if (!confirm(`Are you sure you want to archive ${user.name}? This will deactivate their account.`)) return;
+    
+    try {
+      if (user.isActive) {
+        await archiveUser(user._id);
+        await logActivity('Archived User', 'User', user.email, { role: user.role });
+        alert('User archived successfully');
+      } else {
+        await restoreUser(user._id);
+        await logActivity('Restored User', 'User', user.email, { role: user.role });
+        alert('User restored successfully');
+      }
+      loadUsers();
+      setShowActions(null);
+    } catch (err) {
+      console.error(err);
+      alert('Failed to archive/restore user');
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+    
+    if (resetPasswordForm.password !== resetPasswordForm.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+    
+    if (resetPasswordForm.password.length < 6) {
+      alert('Password must be at least 6 characters');
+      return;
+    }
+    
+    setResettingPassword(true);
+    try {
+      await resetUserPassword(selectedUser._id, resetPasswordForm.password);
+      await logActivity('Reset Password', 'User', selectedUser.email, { role: selectedUser.role });
+      alert('Password reset successfully!');
+      setShowResetPasswordModal(false);
+      setSelectedUser(null);
+      setResetPasswordForm({ password: '', confirmPassword: '' });
+    } catch (err) {
+      console.error(err);
+      alert('Failed to reset password');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
+  const openEditModal = (user: ManagedUser) => {
+    setSelectedUser(user);
+    setEditUserForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      department: user.department || '',
+      section: '',
+    });
+    setShowEditUserModal(true);
+    setShowActions(null);
+  };
+
+  const openResetPasswordModal = (user: ManagedUser) => {
+    setSelectedUser(user);
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+    setShowResetPasswordModal(true);
+    setShowActions(null);
   };
 
   return (
@@ -294,14 +411,23 @@ export default function Admin() {
                           </button>
                           {showActions === u.email && (
                             <div className="absolute right-0 top-full z-10 w-48 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-                              <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <button 
+                                onClick={() => openEditModal(u)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
                                 <Edit size={14} /> Edit User
                               </button>
-                              <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                              <button 
+                                onClick={() => openResetPasswordModal(u)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
                                 <Key size={14} /> Reset Password
                               </button>
-                              <button className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                                <Power size={14} /> {u.status === 'Active' ? 'Deactivate' : 'Activate'}
+                              <button 
+                                onClick={() => handleArchiveUser(u)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                              >
+                                <Archive size={14} /> {u.status === 'Active' ? 'Archive' : 'Restore'}
                               </button>
                             </div>
                           )}
@@ -332,6 +458,9 @@ export default function Admin() {
                     <div>
                       <p className="text-sm font-medium text-gray-900">{log.action}</p>
                       <p className="text-xs text-gray-500">by {log.user} ({log.user_role})</p>
+                      {log.last_login && (
+                        <p className="text-xs text-gray-400">Last login: {new Date(log.last_login).toLocaleString()}</p>
+                      )}
                     </div>
                   </div>
                   <span className="text-xs text-gray-400">
@@ -424,6 +553,149 @@ export default function Admin() {
                     className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
                   >
                     {addingUser ? 'Creating...' : 'Create User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showEditUserModal && selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-lg rounded-xl bg-white p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Edit User</h2>
+                <button onClick={() => setShowEditUserModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleEditUser} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Full Name</label>
+                  <input
+                    required
+                    value={editUserForm.name}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, name: e.target.value })}
+                    placeholder="Enter full name"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Email</label>
+                  <input
+                    required
+                    type="email"
+                    value={editUserForm.email}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, email: e.target.value })}
+                    placeholder="user@sjc.edu.ph"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Role</label>
+                  <select
+                    required
+                    value={editUserForm.role}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, role: e.target.value as Role })}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="counselor">Counselor</option>
+                    <option value="admin">Admin</option>
+                    <option value="faculty">Faculty</option>
+                  </select>
+                </div>
+                {editUserForm.role === 'faculty' && (
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Section</label>
+                    <input
+                      required
+                      value={editUserForm.section}
+                      onChange={(e) => setEditUserForm({ ...editUserForm, section: e.target.value })}
+                      placeholder="e.g., Einstein"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Department</label>
+                  <input
+                    value={editUserForm.department}
+                    onChange={(e) => setEditUserForm({ ...editUserForm, department: e.target.value })}
+                    placeholder="e.g., Student Affairs"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUserModal(false)}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={editingUser}
+                    className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+                  >
+                    {editingUser ? 'Updating...' : 'Update User'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showResetPasswordModal && selectedUser && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-lg rounded-xl bg-white p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Reset Password</h2>
+                <button onClick={() => setShowResetPasswordModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">User</label>
+                  <p className="text-sm font-medium text-gray-900">{selectedUser.name} ({selectedUser.email})</p>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">New Password</label>
+                  <input
+                    required
+                    type="password"
+                    value={resetPasswordForm.password}
+                    onChange={(e) => setResetPasswordForm({ ...resetPasswordForm, password: e.target.value })}
+                    placeholder="Enter new password"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-gray-600">Confirm Password</label>
+                  <input
+                    required
+                    type="password"
+                    value={resetPasswordForm.confirmPassword}
+                    onChange={(e) => setResetPasswordForm({ ...resetPasswordForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm new password"
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPasswordModal(false)}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={resettingPassword}
+                    className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800 disabled:opacity-50"
+                  >
+                    {resettingPassword ? 'Resetting...' : 'Reset Password'}
                   </button>
                 </div>
               </form>

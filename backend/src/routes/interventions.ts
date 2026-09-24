@@ -9,9 +9,9 @@ const router = Router();
 async function generateInterventionId(interventionType: string): Promise<string> {
   const typePrefixMap: Record<string, string> = {
     'Mentoring': 'M',
-    'Tutoring': 'T',
-    'Counseling': 'C',
-    'Family Meeting': 'F',
+    'Peer Tutoring': 'T',
+    'Counseling/Coaching': 'C',
+    'Parent Conference': 'P',
   };
 
   const prefix = typePrefixMap[interventionType] || 'X';

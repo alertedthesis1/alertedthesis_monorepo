@@ -34,17 +34,17 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 // Mapping between display labels and database values for schedule/intervention types
 const SCHEDULE_TYPE_MAPPING = {
   'Mentoring': 'Mentoring',
-  'Peer Tutoring': 'Tutoring',
-  'Counseling / Coaching': 'Counseling',
-  'Parent Conference': 'Family Meeting',
-  'Family': 'Family Meeting', // Legacy support
+  'Peer Tutoring': 'Peer Tutoring',
+  'Counseling / Coaching': 'Counseling/Coaching',
+  'Parent Conference': 'Parent Conference',
+  'Family': 'Parent Conference', // Legacy support
 };
 
 const REVERSE_SCHEDULE_TYPE_MAPPING = {
   'Mentoring': 'Mentoring',
-  'Tutoring': 'Peer Tutoring',
-  'Counseling': 'Counseling / Coaching',
-  'Family Meeting': 'Parent Conference',
+  'Peer Tutoring': 'Peer Tutoring',
+  'Counseling/Coaching': 'Counseling / Coaching',
+  'Parent Conference': 'Parent Conference',
 };
 
 // Function to convert display label to database value
@@ -102,6 +102,35 @@ export default function Counselor() {
   const [reportSearchQuery, setReportSearchQuery] = useState('');
   const [reportTypeFilter, setReportTypeFilter] = useState('All');
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    student_id: '',
+    assigned_to: '',
+    intervention_id: '',
+    due_date: '',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High',
+    status: 'Pending' as 'Pending' | 'In Progress' | 'Completed',
+  });
+  const [scheduleSearchQuery, setScheduleSearchQuery] = useState('');
+  const [scheduleStatusFilter, setScheduleStatusFilter] = useState('All');
+  const [scheduleDateFilter, setScheduleDateFilter] = useState('All');
+  const [scheduleDateSort, setScheduleDateSort] = useState<'desc' | 'asc'>('desc');
+  const [riskFilter, setRiskFilter] = useState('All');
+  const [gradeFilter, setGradeFilter] = useState('All');
+  const [interventionSearchQuery, setInterventionSearchQuery] = useState('');
+  const [interventionStatusFilter, setInterventionStatusFilter] = useState('All');
+  const [interventionDateSort, setInterventionDateSort] = useState<'desc' | 'asc'>('desc');
+  const [showInterventionModal, setShowInterventionModal] = useState(false);
+  const [showMeetingDetailsModal, setShowMeetingDetailsModal] = useState(false);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | null>(null);
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [interventionForm, setInterventionForm] = useState({
+    meeting_details: '',
+    intervention_type: '',
+    description: '',
+    outcome: '',
+  });
 
   const handleGenerateReport = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,32 +191,6 @@ export default function Counselor() {
       error('Download Failed', 'Failed to download report');
     }
   };
-
-  const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
-    student_id: '',
-    assigned_to: '',
-    intervention_id: '',
-    due_date: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High',
-    status: 'Pending' as 'Pending' | 'In Progress' | 'Completed',
-  });
-  const [scheduleSearchQuery, setScheduleSearchQuery] = useState('');
-  const [scheduleStatusFilter, setScheduleStatusFilter] = useState('All');
-  const [scheduleDateFilter, setScheduleDateFilter] = useState('All');
-  const [riskFilter, setRiskFilter] = useState('All');
-  const [gradeFilter, setGradeFilter] = useState('All');
-  const [interventionSearchQuery, setInterventionSearchQuery] = useState('');
-  const [interventionStatusFilter, setInterventionStatusFilter] = useState('All');
-  const [showInterventionModal, setShowInterventionModal] = useState(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
-  const [interventionForm, setInterventionForm] = useState({
-    meeting_details: '',
-    intervention_type: '',
-    description: '',
-    outcome: '',
-  });
 
   useEffect(() => {
     let active = true;
@@ -353,6 +356,7 @@ export default function Counselor() {
         date: appointmentForm.date,
         time: appointmentForm.time,
         type: toDatabaseType(appointmentForm.type),
+        intervention_id: appointmentForm.intervention_id || undefined,
         notes: appointmentForm.notes,
       });
       const updatedSchedules = await fetchSchedules(user?.email);
@@ -788,6 +792,17 @@ export default function Counselor() {
                 <option value="Past">Past</option>
                 <option value="Future">Future</option>
               </select>
+              <select
+                value={scheduleDateSort}
+                onChange={(e) => {
+                  console.log('Setting scheduleDateSort to:', e.target.value);
+                  setScheduleDateSort(e.target.value as 'desc' | 'asc');
+                }}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
               <button
                 onClick={() => {
                   setScheduleSearchQuery('');
@@ -834,23 +849,34 @@ export default function Counselor() {
                   return matchesSearch && matchesStatus && matchesDate;
                 });
                 
-                const sortedSchedules = filteredSchedules.sort((a: Schedule, b: Schedule) => 
-                  new Date(`${b.date}T${b.time}`).getTime() - new Date(`${a.date}T${a.time}`).getTime()
-                );
-                
-                const todaySchedules = sortedSchedules.filter((schedule: Schedule) => {
+                // Separate today's schedules from other schedules first
+                const todaySchedules = filteredSchedules.filter((schedule: Schedule) => {
                   const scheduleDate = new Date(schedule.date);
                   scheduleDate.setHours(0, 0, 0, 0);
                   return scheduleDate.getTime() === today.getTime();
                 });
                 
-                const otherSchedules = sortedSchedules.filter((schedule: Schedule) => {
+                const otherSchedules = filteredSchedules.filter((schedule: Schedule) => {
                   const scheduleDate = new Date(schedule.date);
                   scheduleDate.setHours(0, 0, 0, 0);
                   return scheduleDate.getTime() !== today.getTime();
                 });
                 
-                if (sortedSchedules.length === 0) {
+                // Sort each section separately based on date sort preference
+                const sortedTodaySchedules = [...todaySchedules].sort((a: Schedule, b: Schedule) => {
+                  const dateA = new Date(a.date).getTime();
+                  const dateB = new Date(b.date).getTime();
+                  // For debugging: console.log('Sorting today:', scheduleDateSort, dateA, dateB, dateB - dateA);
+                  return scheduleDateSort === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+                
+                const sortedOtherSchedules = [...otherSchedules].sort((a: Schedule, b: Schedule) => {
+                  const dateA = new Date(a.date).getTime();
+                  const dateB = new Date(b.date).getTime();
+                  return scheduleDateSort === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+                
+                if (filteredSchedules.length === 0) {
                   return (
                     <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
                       <Calendar size={48} className="mx-auto mb-4 text-gray-400" />
@@ -866,7 +892,7 @@ export default function Counselor() {
                         <div className="mt-6">
                           <h3 className="mb-4 text-base font-semibold text-gray-900">Today's Schedule</h3>
                           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                            {todaySchedules.map((schedule: Schedule) => (
+                            {sortedTodaySchedules.map((schedule: Schedule) => (
                               <div key={schedule._id} className="rounded-xl border-2 border-green-200 bg-green-50 p-5">
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-center gap-3">
@@ -978,12 +1004,12 @@ export default function Counselor() {
                       </>
                     )}
                     
-                    {otherSchedules.length > 0 && (
+                    {sortedOtherSchedules.length > 0 && (
                       <>
                         <div className="mt-6">
                           <h3 className="mb-4 text-base font-semibold text-gray-900">All Schedules</h3>
                           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                            {otherSchedules.map((schedule: Schedule) => (
+                            {sortedOtherSchedules.map((schedule: Schedule) => (
                               <div key={schedule._id} className="rounded-xl border border-gray-200 bg-gray-50 p-5">
                                 <div className="flex items-start justify-between">
                                   <div className="flex items-center gap-3">
@@ -1117,6 +1143,14 @@ export default function Counselor() {
                 <option value="Completed">Completed</option>
                 <option value="Cancelled">Cancelled</option>
               </select>
+              <select
+                value={interventionDateSort}
+                onChange={(e) => setInterventionDateSort(e.target.value as 'desc' | 'asc')}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600"
+              >
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+              </select>
               <button
                 onClick={() => {
                   setInterventionSearchQuery('');
@@ -1139,15 +1173,22 @@ export default function Counselor() {
                   return matchesSearch && matchesStatus;
                 });
 
+                // Sort interventions based on date sort preference
+                const sortedInterventions = filteredInterventions.sort((a: Intervention, b: Intervention) => {
+                  const dateA = new Date(a.start_date).getTime();
+                  const dateB = new Date(b.start_date).getTime();
+                  return interventionDateSort === 'desc' ? dateB - dateA : dateA - dateB;
+                });
+
                 // Group by intervention type
-                const groupedInterventions = filteredInterventions.reduce((acc: Record<string, Intervention[]>, intervention: Intervention) => {
+                const groupedInterventions = sortedInterventions.reduce((acc: Record<string, Intervention[]>, intervention: Intervention) => {
                   const type = toDisplayType(intervention.intervention_type) || 'Other';
                   if (!acc[type]) acc[type] = [];
                   acc[type].push(intervention);
                   return acc;
                 }, {});
 
-                if (filteredInterventions.length === 0) {
+                if (sortedInterventions.length === 0) {
                   return (
                     <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50 p-12 text-center">
                       <AlertTriangle size={48} className="mx-auto mb-4 text-gray-400" />
@@ -1207,31 +1248,38 @@ export default function Counselor() {
                               <p className="text-sm text-gray-700">{intervention.description}</p>
                             </div>
                           )}
-                          {(intervention as any).meeting_details && (
-                            <div className="mt-4 rounded-lg bg-green-50 p-3">
-                              <p className="text-xs text-gray-500 mb-1">Meeting Details:</p>
-                              <p className="text-sm text-gray-700">{(intervention as any).meeting_details}</p>
-                            </div>
-                          )}
-                          <button
-                            onClick={() => {
-                              setTaskForm({
-                                title: '',
-                                description: '',
-                                student_id: intervention.student_id as string || '',
-                                assigned_to: '',
-                                intervention_id: (intervention as any).intervention_id || '',
-                                due_date: '',
-                                priority: 'Medium',
-                                status: 'Pending',
-                              });
-                              setEditingTask(null);
-                              setShowTaskModal(true);
-                            }}
-                            className="mt-4 w-full rounded-lg bg-gradient-to-r from-blue-400 to-blue-500 px-4 py-2 text-sm font-semibold text-white hover:from-blue-500 hover:to-blue-600"
-                          >
-                            Add Task
-                          </button>
+                          <div className="mt-4 flex gap-2">
+                            {(intervention as any).meeting_details && (intervention.status === 'Completed' || intervention.status === 'Active') && (
+                              <button
+                                onClick={() => {
+                                  setSelectedIntervention(intervention);
+                                  setShowMeetingDetailsModal(true);
+                                }}
+                                className="flex-1 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                              >
+                                View Meeting Details
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                setTaskForm({
+                                  title: '',
+                                  description: '',
+                                  student_id: intervention.student_id as string || '',
+                                  assigned_to: '',
+                                  intervention_id: (intervention as any).intervention_id || '',
+                                  due_date: '',
+                                  priority: 'Medium',
+                                  status: 'Pending',
+                                });
+                                setEditingTask(null);
+                                setShowTaskModal(true);
+                              }}
+                              className="flex-1 rounded-lg bg-gradient-to-r from-blue-400 to-blue-500 px-4 py-2 text-sm font-semibold text-white hover:from-blue-500 hover:to-blue-600"
+                            >
+                              Add Task
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -1841,6 +1889,60 @@ export default function Counselor() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {showMeetingDetailsModal && selectedIntervention && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-lg rounded-xl bg-white p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold text-gray-900">Meeting Details</h2>
+                <button onClick={() => setShowMeetingDetailsModal(false)} className="text-gray-400 hover:text-gray-600">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="space-y-4">
+                <div className="rounded-lg bg-blue-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Intervention Type</p>
+                  <p className="text-sm font-semibold text-gray-900">{toDisplayType(selectedIntervention.intervention_type)}</p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Student</p>
+                  <p className="text-sm font-medium text-gray-900">
+                    {(selectedIntervention.student_id as any)?.first_name} {(selectedIntervention.student_id as any)?.last_name}
+                  </p>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Intervention ID</p>
+                  <p className="text-sm font-mono text-gray-900">{(selectedIntervention as any).intervention_id || 'N/A'}</p>
+                </div>
+                <div className="rounded-lg bg-green-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Meeting Details</p>
+                  <div className="text-sm text-gray-700 whitespace-pre-wrap mt-2">
+                    {(selectedIntervention as any).meeting_details || 'No meeting details available'}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-gray-50 p-4">
+                  <p className="text-xs text-gray-500 mb-1">Status</p>
+                  <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                    selectedIntervention.status === 'Completed' ? 'bg-green-100 text-green-700' :
+                    selectedIntervention.status === 'Active' ? 'bg-blue-100 text-blue-700' :
+                    selectedIntervention.status === 'Cancelled' ? 'bg-red-100 text-red-700' :
+                    'bg-gray-100 text-gray-700'
+                  }`}>
+                    {selectedIntervention.status}
+                  </span>
+                </div>
+                <div className="flex justify-end pt-2">
+                  <button
+                    onClick={() => setShowMeetingDetailsModal(false)}
+                    className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}

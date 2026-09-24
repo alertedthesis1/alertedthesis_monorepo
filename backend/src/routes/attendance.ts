@@ -10,7 +10,7 @@ const router = Router();
 // Record attendance for a student
 router.post('/', async (req: Request, res: Response) => {
   try {
-    const { student_id, attendance_date, present } = req.body;
+    const { student_id, attendance_date, present, subject } = req.body;
 
     // Check if attendance already exists for this student on this date
     const existingAttendance = await Attendance.findOne({
@@ -22,6 +22,7 @@ router.post('/', async (req: Request, res: Response) => {
     if (existingAttendance) {
       // Update existing attendance
       existingAttendance.present = present;
+      if (subject) existingAttendance.subject = subject;
       attendance = await existingAttendance.save();
     } else {
       // Create new attendance record
@@ -30,7 +31,8 @@ router.post('/', async (req: Request, res: Response) => {
         attendance_date: new Date(attendance_date),
         present,
         course_code: 'GENERAL',
-        course_name: 'General Attendance'
+        course_name: 'General Attendance',
+        subject: subject || 'General'
       });
       attendance = await attendance.save();
     }
@@ -72,31 +74,73 @@ router.get('/student/:student_id', async (req: Request, res: Response) => {
 
     const filter: any = { student_id };
     
-    // Helper function to get term start date
+    // Helper function to get term start date (matching seed script definitions)
     function getTermStartDate(term: string, year: string): Date | null {
       const yearNum = parseInt(year);
       switch (term) {
-        case '1st Term':
-          return new Date(yearNum, 5, 1); // June 1st
-        case '2nd Term':
-          return new Date(yearNum, 8, 1); // September 1st
-        case '3rd Term':
-          return new Date(yearNum + 1, 0, 1); // January 1st of next year
+        case '1st Term': {
+          // 2nd week of June
+          const date = new Date(yearNum, 5, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+        case '2nd Term': {
+          // 3rd week of September
+          const date = new Date(yearNum, 8, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (3 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+        case '3rd Term': {
+          // 2nd week of January (next calendar year)
+          const date = new Date(yearNum + 1, 0, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
         default:
           return null;
       }
     }
 
-    // Helper function to get term end date
+    // Helper function to get term end date (matching seed script definitions)
     function getTermEndDate(term: string, year: string): Date | null {
       const yearNum = parseInt(year);
       switch (term) {
-        case '1st Term':
-          return new Date(yearNum, 7, 31); // August 31st
-        case '2nd Term':
-          return new Date(yearNum, 10, 30); // November 30th
-        case '3rd Term':
-          return new Date(yearNum + 1, 2, 31); // March 31st of next year
+        case '1st Term': {
+          // 2nd week of September
+          const date = new Date(yearNum, 8, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
+        case '2nd Term': {
+          // 2nd week of December
+          const date = new Date(yearNum, 11, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
+        case '3rd Term': {
+          // 1st week of April (next calendar year)
+          const date = new Date(yearNum + 1, 3, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (1 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
         default:
           return null;
       }
@@ -106,17 +150,36 @@ router.get('/student/:student_id', async (req: Request, res: Response) => {
     if (term && year) {
       const termStartDate = getTermStartDate(term as string, year as string);
       const termEndDate = getTermEndDate(term as string, year as string);
+      
+      // Filter out future dates beyond current GMT+8 date
+      const now = new Date();
+      const gmt8Offset = 8 * 60 * 60 * 1000;
+      const currentGMT8 = new Date(now.getTime() + gmt8Offset);
+      currentGMT8.setHours(23, 59, 59, 999);
+      
       if (termStartDate && termEndDate) {
+        const effectiveEndDate = termEndDate > currentGMT8 ? currentGMT8 : termEndDate;
         filter.attendance_date = {
           $gte: termStartDate,
-          $lte: termEndDate
+          $lte: effectiveEndDate
         };
       }
     } else if (start_date && end_date) {
       // Otherwise use explicit date range
+      const startDate = new Date(start_date as string);
+      const endDate = new Date(end_date as string);
+      
+      // Filter out future dates beyond current GMT+8 date
+      const now = new Date();
+      const gmt8Offset = 8 * 60 * 60 * 1000;
+      const currentGMT8 = new Date(now.getTime() + gmt8Offset);
+      currentGMT8.setHours(23, 59, 59, 999);
+      
+      const effectiveEndDate = endDate > currentGMT8 ? currentGMT8 : endDate;
+      
       filter.attendance_date = {
-        $gte: new Date(start_date as string),
-        $lte: new Date(end_date as string)
+        $gte: startDate,
+        $lte: effectiveEndDate
       };
     }
 
@@ -136,10 +199,20 @@ router.post('/batch', async (req: Request, res: Response) => {
   try {
     const { student_ids, attendance_date } = req.body;
     const date = attendance_date ? new Date(attendance_date) : new Date();
+    
+    // Set start/end of day for date range comparison (local time)
+    const startOfDay = new Date(date);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const attendanceRecords = await Attendance.find({
       student_id: { $in: student_ids },
-      attendance_date: date
+      attendance_date: {
+        $gte: startOfDay,
+        $lte: endOfDay
+      }
     }).exec();
 
     res.json({ data: attendanceRecords });

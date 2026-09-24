@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { User } from '../models/User';
+import { ActivityLog } from '../models/ActivityLog';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -83,6 +84,24 @@ router.post('/login', async (req: Request, res: Response) => {
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(401).json({ error: 'Invalid email or password' });
+    }
+
+    // Update last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Log login activity
+    try {
+      const log = new ActivityLog({
+        action: 'Login',
+        user: user.name,
+        user_email: user.email,
+        user_role: user.role,
+        last_login: user.lastLogin,
+      });
+      await log.save();
+    } catch (logError) {
+      console.error('Error logging login activity:', logError);
     }
 
     // Generate JWT token

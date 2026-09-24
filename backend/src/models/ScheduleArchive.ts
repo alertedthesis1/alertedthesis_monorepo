@@ -6,7 +6,7 @@ export interface IScheduleArchive extends Document {
   student_name: string;
   date: Date;
   time: string;
-  type: 'Mentoring' | 'Tutoring' | 'Counseling' | 'Family Meeting';
+  type: 'Mentoring' | 'Peer Tutoring' | 'Counseling/Coaching' | 'Parent Conference';
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled' | 'No-Show';
   notes?: string;
   intervention_id?: string;
@@ -41,7 +41,7 @@ const scheduleArchiveSchema = new Schema<IScheduleArchive>(
     },
     type: {
       type: String,
-      enum: ['Mentoring', 'Tutoring', 'Counseling', 'Family Meeting'],
+      enum: ['Mentoring', 'Peer Tutoring', 'Counseling/Coaching', 'Parent Conference'],
       required: true,
     },
     status: {

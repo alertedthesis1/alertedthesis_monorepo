@@ -364,6 +364,110 @@ export class NotificationService {
 
     await notification.save();
   }
+
+  /**
+   * Create a schedule creation notification
+   */
+  async createScheduleNotification(studentId: string, scheduleType: string, scheduleDate: string, scheduleTime: string, facultyEmail: string): Promise<void> {
+    const student = await Student.findById(studentId);
+    if (!student) return;
+
+    const faculty = await User.findOne({ email: facultyEmail, role: 'faculty' });
+    if (!faculty) return;
+
+    const notification = new Notification({
+      user_id: faculty._id,
+      user_email: faculty.email,
+      type: 'intervention_alert',
+      title: 'New Schedule Created',
+      message: `${scheduleType} session scheduled for ${student.first_name} ${student.last_name} on ${scheduleDate} at ${scheduleTime}`,
+      student_id: studentId,
+      student_name: `${student.first_name} ${student.last_name}`,
+      priority: 'medium',
+      link: `/students/${studentId}`,
+      read: false,
+    });
+
+    await notification.save();
+  }
+
+  /**
+   * Create a schedule reminder notification
+   */
+  async createScheduleReminderNotification(studentId: string, scheduleType: string, scheduleDate: string, scheduleTime: string, facultyEmail: string): Promise<void> {
+    const student = await Student.findById(studentId);
+    if (!student) return;
+
+    const faculty = await User.findOne({ email: facultyEmail, role: 'faculty' });
+    if (!faculty) return;
+
+    const notification = new Notification({
+      user_id: faculty._id,
+      user_email: faculty.email,
+      type: 'intervention_alert',
+      title: 'Schedule Reminder',
+      message: `Reminder: ${scheduleType} session with ${student.first_name} ${student.last_name} tomorrow at ${scheduleTime}`,
+      student_id: studentId,
+      student_name: `${student.first_name} ${student.last_name}`,
+      priority: 'high',
+      link: `/students/${studentId}`,
+      read: false,
+    });
+
+    await notification.save();
+  }
+
+  /**
+   * Create a schedule completion notification
+   */
+  async createScheduleCompletionNotification(studentId: string, scheduleType: string, facultyEmail: string): Promise<void> {
+    const student = await Student.findById(studentId);
+    if (!student) return;
+
+    const faculty = await User.findOne({ email: facultyEmail, role: 'faculty' });
+    if (!faculty) return;
+
+    const notification = new Notification({
+      user_id: faculty._id,
+      user_email: faculty.email,
+      type: 'intervention_alert',
+      title: 'Schedule Completed',
+      message: `${scheduleType} session with ${student.first_name} ${student.last_name} has been completed`,
+      student_id: studentId,
+      student_name: `${student.first_name} ${student.last_name}`,
+      priority: 'low',
+      link: `/students/${studentId}`,
+      read: false,
+    });
+
+    await notification.save();
+  }
+
+  /**
+   * Create a schedule cancellation notification
+   */
+  async createScheduleCancellationNotification(studentId: string, scheduleType: string, facultyEmail: string): Promise<void> {
+    const student = await Student.findById(studentId);
+    if (!student) return;
+
+    const faculty = await User.findOne({ email: facultyEmail, role: 'faculty' });
+    if (!faculty) return;
+
+    const notification = new Notification({
+      user_id: faculty._id,
+      user_email: faculty.email,
+      type: 'intervention_alert',
+      title: 'Schedule Cancelled',
+      message: `${scheduleType} session with ${student.first_name} ${student.last_name} has been cancelled`,
+      student_id: studentId,
+      student_name: `${student.first_name} ${student.last_name}`,
+      priority: 'medium',
+      link: `/students/${studentId}`,
+      read: false,
+    });
+
+    await notification.save();
+  }
 }
 
 export const notificationService = new NotificationService();

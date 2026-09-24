@@ -24,9 +24,9 @@ export interface RiskScore {
 }
 
 export interface Intervention {
-  intervention_id: number;
-  student_id: number;
-  score_id: number;
+  intervention_id: string;
+  student_id: string;
+  score_id: string;
   intervention_type: string;
   description: string;
   status: 'Pending' | 'Active' | 'Completed';

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { ShieldCheck, Search, BarChart3, LogOut, LayoutDashboard, Users, Settings, Bell, X, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Search, BarChart3, LogOut, LayoutDashboard, Users, Settings, Bell, X, AlertTriangle, Menu } from 'lucide-react';
 import { useAuth, Role } from '@/context/AuthContext';
 import { fetchFacultyNotifications, fetchUnreadNotificationCount, markNotificationAsRead, FacultyNotification } from '@/lib/api';
 
@@ -26,6 +26,7 @@ export default function AppHeader({ showSearch = true }: { showSearch?: boolean 
   const [notifications, setNotifications] = useState<FacultyNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   if (!user) return null;
   const nav = NAV_BY_ROLE[user.role];
@@ -122,10 +123,11 @@ export default function AppHeader({ showSearch = true }: { showSearch?: boolean 
           </span>
           <span className="leading-tight">
             <span className="block text-lg font-bold text-gray-900">AlertED</span>
-            <span className="block text-[11px] text-gray-500">Early Warning and Prevention System for Students at Risk</span>
+            <span className="hidden sm:block text-[11px] text-gray-500">Early Warning and Prevention System for Students at Risk</span>
           </span>
         </Link>
 
+        {/* Desktop Navigation */}
         <nav className="hidden items-center gap-1 md:flex">
           {nav.map((item) => {
             const active = router.pathname === item.href;
@@ -171,7 +173,7 @@ export default function AppHeader({ showSearch = true }: { showSearch?: boolean 
 
             {/* Notification Dropdown */}
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-96 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
                 <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
                   <h3 className="font-semibold text-gray-900">Notifications</h3>
                   <button
@@ -233,19 +235,66 @@ export default function AppHeader({ showSearch = true }: { showSearch?: boolean 
             )}
           </div>
 
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden rounded-lg border border-gray-200 p-2 hover:bg-gray-100"
+            aria-label="Menu"
+          >
+            <Menu size={20} className="text-gray-600" />
+          </button>
+
           <div className="hidden text-right sm:block">
             <p className="text-sm font-semibold text-gray-900">{user.name}</p>
             <p className="text-[11px] capitalize text-gray-500">{user.role}</p>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+            className="hidden sm:flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
           >
             <LogOut size={16} />
-            <span className="hidden sm:inline">Logout</span>
+            <span>Logout</span>
           </button>
         </div>
       </div>
+
+      {/* Mobile Menu */}
+      {showMobileMenu && (
+        <div className="md:hidden border-t border-gray-200 bg-white px-4 py-3">
+          <nav className="flex flex-col gap-2">
+            {nav.map((item) => {
+              const active = router.pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setShowMobileMenu(false)}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    active ? 'bg-green-50 text-green-800' : 'text-gray-600 hover:bg-gray-100'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-900">{user.name}</p>
+                <p className="text-[11px] capitalize text-gray-500">{user.role}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

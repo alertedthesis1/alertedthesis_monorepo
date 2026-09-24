@@ -59,10 +59,12 @@ router.get('/:id/detail', async (req: Request, res: Response) => {
 
 // Get AI-generated student summary using the student summary service
 // Returns a comprehensive AI analysis of the student's academic and behavioral data
+// Supports optional term and year filtering
 router.get('/:id/ai-summary', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const summary = await studentSummaryService.getStudentSummary(id);
+    const { term, year } = req.query;
+    const summary = await studentSummaryService.getStudentSummary(id, term as string, year as string);
     res.json({ data: summary });
   } catch (error) {
     console.error('Error generating AI summary:', error);
@@ -76,10 +78,21 @@ router.get('/:id/ai-summary', async (req: Request, res: Response) => {
 
 // Get all academic records for a specific student
 // Returns records sorted by creation date (newest first)
+// Supports optional term and year filtering
 router.get('/:id/academics', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const academics = await AcademicRecord.find({ student_id: id }).sort({ createdAt: -1 });
+    const { term, year } = req.query;
+
+    const filter: any = { student_id: id };
+    
+    // If term and year are provided, filter by them
+    if (term && year) {
+      filter.term = term;
+      filter.year = year;
+    }
+
+    const academics = await AcademicRecord.find(filter).sort({ createdAt: -1 });
     res.json({ data: academics });
   } catch (error) {
     console.error('Error fetching student academics:', error);
@@ -174,10 +187,107 @@ router.delete('/academics/:academicId', async (req: Request, res: Response) => {
 
 // Get all attendance records for a specific student
 // Returns up to 50 records sorted by date (newest first)
+// Supports optional term and year filtering
 router.get('/:id/attendance', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const attendance = await Attendance.find({ student_id: id }).sort({ attendance_date: -1 }).limit(50);
+    const { term, year } = req.query;
+
+    const filter: any = { student_id: id };
+    
+    // Helper function to get term start date (matching seed script definitions)
+    function getTermStartDate(term: string, year: string): Date | null {
+      const yearNum = parseInt(year);
+      switch (term) {
+        case '1st Term': {
+          // 2nd week of June
+          const date = new Date(yearNum, 5, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+        case '2nd Term': {
+          // 3rd week of September
+          const date = new Date(yearNum, 8, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (3 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+        case '3rd Term': {
+          // 2nd week of January (next calendar year)
+          const date = new Date(yearNum + 1, 0, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (1 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(0, 0, 0, 0);
+          return date;
+        }
+        default:
+          return null;
+      }
+    }
+
+    // Helper function to get term end date (matching seed script definitions)
+    function getTermEndDate(term: string, year: string): Date | null {
+      const yearNum = parseInt(year);
+      switch (term) {
+        case '1st Term': {
+          // 2nd week of September
+          const date = new Date(yearNum, 8, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
+        case '2nd Term': {
+          // 2nd week of December
+          const date = new Date(yearNum, 11, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (2 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
+        case '3rd Term': {
+          // 1st week of April (next calendar year)
+          const date = new Date(yearNum + 1, 3, 1);
+          const dayOfWeek = date.getDay();
+          const daysToAdd = (1 - 1) * 7 + (6 - dayOfWeek + 7) % 7;
+          date.setDate(date.getDate() + daysToAdd);
+          date.setHours(23, 59, 59, 999);
+          return date;
+        }
+        default:
+          return null;
+      }
+    }
+
+    // If term and year are provided, use term date range
+    if (term && year) {
+      const termStartDate = getTermStartDate(term as string, year as string);
+      const termEndDate = getTermEndDate(term as string, year as string);
+      
+      // Filter out future dates beyond current GMT+8 date
+      const now = new Date();
+      const gmt8Offset = 8 * 60 * 60 * 1000;
+      const currentGMT8 = new Date(now.getTime() + gmt8Offset);
+      currentGMT8.setHours(23, 59, 59, 999);
+      
+      if (termStartDate && termEndDate) {
+        const effectiveEndDate = termEndDate > currentGMT8 ? currentGMT8 : termEndDate;
+        filter.attendance_date = {
+          $gte: termStartDate,
+          $lte: effectiveEndDate
+        };
+      }
+    }
+
+    const attendance = await Attendance.find(filter).sort({ attendance_date: 1 });
     res.json({ data: attendance });
   } catch (error) {
     console.error('Error fetching student attendance:', error);

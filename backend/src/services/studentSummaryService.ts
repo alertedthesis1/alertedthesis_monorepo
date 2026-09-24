@@ -18,15 +18,122 @@ export interface StudentSummaryData {
 
 export class StudentSummaryService {
   /**
-   * Fetch all relevant data for a student
+   * Get date range for a given term and year
+   * Uses the same logic as the attendance service for consistency
+   * Philippine school calendar (updated to specific weeks):
+   * 1st Term: 2nd week June to 2nd week September
+   * 2nd Term: 3rd week September to 2nd week December
+   * 3rd Term: 2nd week January to 1st week April (next calendar year)
    */
-  async getStudentData(studentId: string): Promise<StudentSummaryData> {
+  private getTermDateRange(term: string, year: string): { startDate: Date; endDate: Date } {
+    const yearNum = parseInt(year);
+    let startDate: Date;
+    let endDate: Date;
+
+    switch (term) {
+      case '1st Term': {
+        // 2nd week of June
+        startDate = new Date(yearNum, 5, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (2 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 2nd week of September
+        endDate = new Date(yearNum, 8, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (2 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
+        break;
+      }
+      case '2nd Term': {
+        // 3rd week of September
+        startDate = new Date(yearNum, 8, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (3 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 2nd week of December
+        endDate = new Date(yearNum, 11, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (2 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
+        break;
+      }
+      case '3rd Term': {
+        // 2nd week of January (next calendar year)
+        startDate = new Date(yearNum + 1, 0, 1);
+        const startDayOfWeek = startDate.getDay();
+        const daysToAdd = (2 - 1) * 7 + (1 - startDayOfWeek + 7) % 7;
+        startDate.setDate(startDate.getDate() + daysToAdd);
+        
+        // 1st week of April (next calendar year)
+        endDate = new Date(yearNum + 1, 3, 1);
+        const endDayOfWeek = endDate.getDay();
+        const endDaysToAdd = (1 - 1) * 7 + (6 - endDayOfWeek + 7) % 7;
+        endDate.setDate(endDate.getDate() + endDaysToAdd);
+        break;
+      }
+      default:
+        // Default to current year if no valid term
+        startDate = new Date(yearNum, 0, 1);
+        endDate = new Date(yearNum, 11, 31);
+    }
+
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
+
+    return { startDate, endDate };
+  }
+
+  /**
+   * Fetch all relevant data for a student
+   * Optionally filter by term and year
+   */
+  async getStudentData(studentId: string, term?: string, year?: string): Promise<StudentSummaryData> {
+    // Build date filters if term and year are provided
+    let attendanceFilter: any = { student_id: studentId };
+    let academicFilter: any = { student_id: studentId };
+    let interventionFilter: any = { student_id: studentId };
+    let behaviorFilter: any = { student_id: studentId };
+
+    if (term && year) {
+      const { startDate, endDate } = this.getTermDateRange(term, year);
+      
+      // Filter out future dates beyond current GMT+8 date
+      const now = new Date();
+      const gmt8Offset = 8 * 60 * 60 * 1000;
+      const currentGMT8 = new Date(now.getTime() + gmt8Offset);
+      currentGMT8.setHours(23, 59, 59, 999);
+      
+      const effectiveEndDate = endDate > currentGMT8 ? currentGMT8 : endDate;
+      
+      attendanceFilter.attendance_date = {
+        $gte: startDate,
+        $lte: effectiveEndDate
+      };
+      
+      academicFilter.$or = [
+        { term, year },
+        { createdAt: { $gte: startDate, $lte: effectiveEndDate } }
+      ];
+      
+      interventionFilter.start_date = {
+        $gte: startDate,
+        $lte: effectiveEndDate
+      };
+      
+      behaviorFilter.report_date = {
+        $gte: startDate,
+        $lte: effectiveEndDate
+      };
+    }
+
     const [student, attendance, academics, interventions, behaviorReports, riskScores] = await Promise.all([
       Student.findById(studentId),
-      Attendance.find({ student_id: studentId }).sort({ attendance_date: -1 }).limit(30),
-      AcademicRecord.find({ student_id: studentId }).sort({ createdAt: -1 }).limit(5),
-      Intervention.find({ student_id: studentId }).sort({ createdAt: -1 }).limit(10),
-      BehaviorReport.find({ student_id: studentId }).sort({ report_date: -1 }).limit(10),
+      Attendance.find(attendanceFilter).sort({ attendance_date: -1 }).limit(30),
+      AcademicRecord.find(academicFilter).sort({ createdAt: -1 }).limit(5),
+      Intervention.find(interventionFilter).sort({ createdAt: -1 }).limit(10),
+      BehaviorReport.find(behaviorFilter).sort({ report_date: -1 }).limit(10),
       RiskScore.find({ student_id: studentId }).sort({ prediction_date: -1 }).limit(5),
     ]);
 
@@ -42,12 +149,13 @@ export class StudentSummaryService {
 
   /**
    * Generate AI summary using OpenRouter API
+   * Optionally filter by term and year
    */
-  async generateAISummary(studentData: StudentSummaryData): Promise<string> {
+  async generateAISummary(studentData: StudentSummaryData, term?: string, year?: string): Promise<string> {
     // Check if API key is configured
     if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === '') {
       console.warn('OpenRouter API key not configured. Using fallback summary.');
-      return this.generateFallbackSummary(studentData);
+      return this.generateFallbackSummary(studentData, term, year);
     }
 
     const { student, attendance, academics, interventions, behaviorReports, riskScores } = studentData;
@@ -65,12 +173,13 @@ export class StudentSummaryService {
     const completedInterventions = interventions.filter(i => i.status === 'Completed');
 
     // Build context for AI
+    const termYearInfo = term && year ? `\n- Period: ${term} ${year}` : '';
     const context = `
 Student Information:
 - Name: ${student?.first_name} ${student?.last_name}
 - ID: ${student?.student_id}
 - Grade: ${student?.grade_level || student?.year_level}
-- Section: ${student?.section}
+- Section: ${student?.section}${termYearInfo}
 
 Academic Performance:
 - Overall Average: ${latestAcademic?.overall_average || 'N/A'}
@@ -147,15 +256,17 @@ Behavior Reports:
     } catch (error) {
       console.error('Error generating AI summary:', error);
       // Return fallback summary instead of throwing error
-      return this.generateFallbackSummary(studentData);
+      return this.generateFallbackSummary(studentData, term, year);
     }
   }
 
   /**
    * Generate a fallback summary when AI is unavailable
+   * Optionally filter by term and year
    */
-  private generateFallbackSummary(studentData: StudentSummaryData): string {
+  private generateFallbackSummary(studentData: StudentSummaryData, term?: string, year?: string): string {
     const { student, attendance, academics, interventions, behaviorReports, riskScores } = studentData;
+    const termYearInfo = term && year ? ` (${term} ${year})` : '';
 
     // Calculate key metrics
     const recentAttendance = attendance.slice(0, 10);
@@ -171,7 +282,7 @@ Behavior Reports:
 
     // Build a structured summary
     const summary = [
-      `**Student Overview:** ${student?.first_name} ${student?.last_name} (${student?.student_id}) - Grade ${student?.grade_level || student?.year_level}, Section ${student?.section}`,
+      `**Student Overview:** ${student?.first_name} ${student?.last_name} (${student?.student_id}) - Grade ${student?.grade_level || student?.year_level}, Section ${student?.section}${termYearInfo}`,
       `**Academic Performance:** Overall Average: ${latestAcademic?.overall_average || 'N/A'}, Mathematics: ${latestAcademic?.mathematics_grade || 'N/A'}, English: ${latestAcademic?.english_grade || 'N/A'}, Science: ${latestAcademic?.science_grade || 'N/A'}`,
       `**Attendance:** ${attendanceRate.toFixed(1)}% attendance rate in recent records`,
       `**Risk Assessment:** Current level: ${latestRisk?.risk_level || 'N/A'}, Risk score: ${latestRisk?.risk_score || 'N/A'}`,
@@ -198,10 +309,11 @@ Behavior Reports:
 
   /**
    * Get student summary with AI-generated insights
+   * Optionally filter by term and year
    */
-  async getStudentSummary(studentId: string): Promise<{ data: StudentSummaryData; aiSummary: string }> {
-    const data = await this.getStudentData(studentId);
-    const aiSummary = await this.generateAISummary(data);
+  async getStudentSummary(studentId: string, term?: string, year?: string): Promise<{ data: StudentSummaryData; aiSummary: string }> {
+    const data = await this.getStudentData(studentId, term, year);
+    const aiSummary = await this.generateAISummary(data, term, year);
     return { data, aiSummary };
   }
 }
