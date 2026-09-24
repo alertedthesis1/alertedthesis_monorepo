@@ -714,8 +714,8 @@ export default function Counselor() {
                         <span className="text-gray-700">{s.scienceGrade || '-'}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500">GPA:</span>
-                        <span className="text-gray-700">{s.gpa || '-'}</span>
+                        <span className="text-gray-500">Overall Average:</span>
+                        <span className="text-gray-700">{s.generalAverage || '-'}</span>
                       </div>
                     </div>
 
