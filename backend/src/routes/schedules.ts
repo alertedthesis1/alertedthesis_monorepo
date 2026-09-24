@@ -461,7 +461,7 @@ router.post('/:id/complete-with-intervention', async (req: Request, res: Respons
       await intervention.save();
 
       // Update schedule with intervention_id
-      schedule.intervention_id = intervention._id;
+      schedule.intervention_id = intervention.intervention_id;
     }
 
     // Update schedule status to completed if completeOnly

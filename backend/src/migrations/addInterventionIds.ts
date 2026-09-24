@@ -121,7 +121,7 @@ export async function migrateInterventionIds() {
       }).sort({ createdAt: -1 });
 
       if (intervention && intervention.intervention_id) {
-        schedule.intervention_id = intervention._id;
+        schedule.intervention_id = intervention.intervention_id;
         await schedule.save();
         console.log(`Connected schedule to intervention: ${intervention.intervention_id}`);
       }
