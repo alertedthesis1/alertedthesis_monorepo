@@ -28,15 +28,13 @@ services:
 
   - type: web
     name: alerted-frontend
-    env: node
+    env: static
     plan: free
     buildCommand: cd frontend && npm install && npm run build
-    startCommand: cd frontend && npm start
+    staticPublishPath: frontend/out
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 10000
       - key: NEXT_PUBLIC_API_URL
         value: https://alerted-backend.onrender.com
       - key: NEXT_PUBLIC_R2_URL

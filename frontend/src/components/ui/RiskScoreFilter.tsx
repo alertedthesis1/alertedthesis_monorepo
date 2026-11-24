@@ -42,7 +42,7 @@ export default function RiskScoreFilterComponent({ onFilterChange, onClear, curr
       >
         <Filter size={16} />
         {hasActiveFilters ? 'Filters Active' : 'Filter Risk Scores'}
-        {hasActiveFilters && <X size={14} onClick={(e) => { e.stopPropagation(); handleClearFilter(); }} />}
+        {hasActiveFilters && <X size={14} onClick={(e: React.MouseEvent<SVGElement>) => { e.stopPropagation(); handleClearFilter(); }} />}
       </button>
 
       {isOpen && (
