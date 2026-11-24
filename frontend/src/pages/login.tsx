@@ -44,9 +44,7 @@ export default function Login() {
       <div className="flex min-h-screen">
         <div className="hidden w-1/2 flex-col justify-between bg-green-800 p-12 text-white lg:flex">
           <div className="flex items-center gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15">
-              <ShieldCheck size={24} />
-            </span>
+            <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-11 w-auto" />
             <div>
               <p className="text-xl font-bold">AlertED</p>
               <p className="text-xs text-green-100">Early Warning and Prevention System for Students at Risk</p>
@@ -73,9 +71,7 @@ export default function Login() {
           <div className="w-full max-w-md">
             <div className="mb-8 lg:hidden">
               <div className="flex items-center gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-700 text-white">
-                  <ShieldCheck size={20} />
-                </span>
+                <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
                 <p className="text-xl font-bold text-gray-900">AlertED</p>
               </div>
             </div>

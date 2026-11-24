@@ -301,9 +301,12 @@ export default function Admin() {
         <title>Admin - AlertED</title>
       </Head>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
-          <p className="text-sm text-gray-500">Manage users, roles, and system configuration</p>
+        <div className="mb-6 flex items-center gap-4">
+          <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Administration</h1>
+            <p className="text-sm text-gray-500">Manage users, roles, and system configuration</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">

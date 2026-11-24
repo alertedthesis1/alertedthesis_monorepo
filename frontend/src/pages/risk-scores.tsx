@@ -52,9 +52,12 @@ export default function RiskScoresPage() {
       </Head>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Risk Scores</h1>
-            <p className="text-sm text-gray-500">Student risk assessment by term and date</p>
+          <div className="flex items-center gap-4">
+            <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Risk Scores</h1>
+              <p className="text-sm text-gray-500">Student risk assessment by term and date</p>
+            </div>
           </div>
           <RiskScoreFilterComponent
             onFilterChange={handleFilterChange}

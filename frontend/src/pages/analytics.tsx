@@ -96,12 +96,10 @@ export default function Analytics() {
           >
             <ArrowLeft size={16} /> Back
           </button>
-          <div className="flex items-center gap-2">
-            <BarChart3 size={20} className="text-green-700" />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">Analytics &amp; Reports</h1>
-              <p className="text-xs text-gray-500">Data-driven insights for student success</p>
-            </div>
+          <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-8 w-auto" />
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Analytics &amp; Reports</h1>
+            <p className="text-xs text-gray-500">Data-driven insights for student success</p>
           </div>
         </div>
 

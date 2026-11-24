@@ -467,10 +467,7 @@ export default function StudentProfile() {
             <ArrowLeft size={16} /> Back to Dashboard
           </button>
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-gray-600">
-              {student.firstName[0]}
-              {student.lastName[0]}
-            </div>
+            <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">
                 {student.firstName} {student.lastName}

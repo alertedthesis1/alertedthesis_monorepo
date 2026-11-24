@@ -491,9 +491,7 @@ export default function Counselor() {
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-200 text-gray-600">
-              {user ? user.name.split(' ').map((n) => n[0]).slice(0, 2).join('') : 'CO'}
-            </div>
+            <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
             <div>
               <h1 className="text-xl font-bold text-gray-900">{user?.name ?? 'School Counselor'}</h1>
               <p className="text-sm text-gray-500">{user?.department ?? 'School Counselor - Student Affairs'}</p>

@@ -72,11 +72,14 @@ export default function Dashboard() {
         <title>Dashboard - AlertED</title>
       </Head>
       <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back{user ? `, ${user.name.split(' ').slice(-1)[0]}` : ''}
-          </h1>
-          <p className="text-sm text-gray-500">Real-time student risk monitoring overview</p>
+        <div className="mb-6 flex items-center gap-4">
+          <img src="/images/alerted-logo.png" alt="AlertED Logo" className="h-10 w-auto" />
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Welcome back{user ? `, ${user.name.split(' ').slice(-1)[0]}` : ''}
+            </h1>
+            <p className="text-sm text-gray-500">Real-time student risk monitoring overview</p>
+          </div>
         </div>
 
         {/* Term and Year Filters */}
