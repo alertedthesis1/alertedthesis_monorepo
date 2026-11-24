@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
-const JWT_EXPIRES_IN = '7d';
+const JWT_EXPIRES_IN = '30m';
 
 // Register new user
 router.post('/register', async (req: Request, res: Response) => {

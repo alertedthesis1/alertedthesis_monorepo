@@ -100,6 +100,9 @@ export default function Admin() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activityLogPage, setActivityLogPage] = useState(1);
+  const [activityLogFilter, setActivityLogFilter] = useState<'all' | 'login' | 'edit' | 'add'>('all');
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchActivityLogs();
@@ -135,6 +138,24 @@ export default function Admin() {
       console.error('Error fetching activity logs:', error);
     }
   };
+
+  const filteredActivityLogs = activityLogs
+    .filter((log) => {
+      if (activityLogFilter === 'all') return true;
+      const actionLower = log.action.toLowerCase();
+      if (activityLogFilter === 'login') return actionLower.includes('login') || actionLower.includes('logged in');
+      if (activityLogFilter === 'edit') return actionLower.includes('edit') || actionLower.includes('updated');
+      if (activityLogFilter === 'add') return actionLower.includes('add') || actionLower.includes('created');
+      return true;
+    })
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+  const paginatedActivityLogs = filteredActivityLogs.slice(
+    (activityLogPage - 1) * itemsPerPage,
+    activityLogPage * itemsPerPage
+  );
+
+  const totalPages = Math.ceil(filteredActivityLogs.length / itemsPerPage);
 
   const logActivity = async (action: string, targetType?: string, targetId?: string, details?: any) => {
     try {
@@ -446,15 +467,30 @@ export default function Admin() {
 
         {/* Activity Logs */}
         <div className="mt-6 rounded-xl border border-gray-200 bg-white p-5">
-          <div className="mb-4 flex items-center gap-2">
-            <Clock size={18} className="text-green-700" />
-            <h2 className="text-lg font-bold text-gray-900">Activity Logs</h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Clock size={18} className="text-green-700" />
+              <h2 className="text-lg font-bold text-gray-900">Activity Logs</h2>
+            </div>
+            <select
+              value={activityLogFilter}
+              onChange={(e) => {
+                setActivityLogFilter(e.target.value as 'all' | 'login' | 'edit' | 'add');
+                setActivityLogPage(1);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="all">All Activities</option>
+              <option value="login">Logins</option>
+              <option value="edit">Edits</option>
+              <option value="add">Added Users</option>
+            </select>
           </div>
           <div className="space-y-3">
-            {activityLogs.length === 0 ? (
-              <p className="text-sm text-gray-500">No activity logs yet.</p>
+            {paginatedActivityLogs.length === 0 ? (
+              <p className="text-sm text-gray-500">No activity logs found.</p>
             ) : (
-              activityLogs.map((log) => (
+              paginatedActivityLogs.map((log) => (
                 <div key={log._id} className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
                   <div className="flex items-center gap-3">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
@@ -473,6 +509,32 @@ export default function Admin() {
               ))
             )}
           </div>
+          {totalPages > 1 && (
+            <div className="mt-4 flex items-center justify-between">
+              <p className="text-sm text-gray-600">
+                Showing {((activityLogPage - 1) * itemsPerPage) + 1} to {Math.min(activityLogPage * itemsPerPage, filteredActivityLogs.length)} of {filteredActivityLogs.length} logs
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActivityLogPage(p => Math.max(1, p - 1))}
+                  disabled={activityLogPage === 1}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <span className="text-sm text-gray-600">
+                  Page {activityLogPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setActivityLogPage(p => Math.min(totalPages, p + 1))}
+                  disabled={activityLogPage === totalPages}
+                  className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {showAddUserModal && (
