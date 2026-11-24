@@ -8,7 +8,7 @@ router.get('/', async (req: Request, res: Response) => {
   try {
     const logs = await ActivityLog.find()
       .sort({ timestamp: -1 })
-      .limit(50)
+      .limit(500)
       .exec();
 
     res.json({ data: logs });
@@ -24,7 +24,7 @@ router.get('/user/:userEmail', async (req: Request, res: Response) => {
     const { userEmail } = req.params;
     const logs = await ActivityLog.find({ user_email: userEmail })
       .sort({ timestamp: -1 })
-      .limit(50)
+      .limit(500)
       .exec();
 
     res.json({ data: logs });

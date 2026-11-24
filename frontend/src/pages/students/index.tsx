@@ -5,6 +5,8 @@ import { Search, Plus, Edit, Trash2, X, Filter } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { createStudent, updateStudent, deleteStudent } from '@/lib/api';
 import axios from 'axios';
+import ConfirmModal from '@/components/ui/ConfirmModal';
+import { useConfirm } from '@/hooks/useConfirm';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -32,6 +34,7 @@ interface Student {
 export default function StudentsManagement() {
   const router = useRouter();
   const { user } = useAuth();
+  const { confirm, confirmState, closeConfirm } = useConfirm();
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -98,7 +101,13 @@ export default function StudentsManagement() {
     setShowModal(true);
   };
 
-  const handleEdit = (student: Student) => {
+  const handleEdit = async (student: Student) => {
+    const confirmed = await confirm(
+      'Edit Student',
+      `Are you sure you want to edit ${student.first_name} ${student.last_name}?`,
+      { confirmText: 'Edit', cancelText: 'Cancel', variant: 'info' }
+    );
+    if (!confirmed) return;
     setEditingStudent(student);
     setFormData({
       first_name: student.first_name,
@@ -118,8 +127,13 @@ export default function StudentsManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this student?')) return;
-    
+    const confirmed = await confirm(
+      'Delete Student',
+      'Are you sure you want to delete this student?',
+      { confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' }
+    );
+    if (!confirmed) return;
+
     try {
       await deleteStudent(id);
       await loadStudents();
@@ -207,8 +221,6 @@ export default function StudentsManagement() {
               <option value="Grade 8">Grade 8</option>
               <option value="Grade 9">Grade 9</option>
               <option value="Grade 10">Grade 10</option>
-              <option value="Grade 11">Grade 11</option>
-              <option value="Grade 12">Grade 12</option>
             </select>
           </div>
           <button
@@ -419,8 +431,6 @@ export default function StudentsManagement() {
                       <option value="Grade 8">Grade 8</option>
                       <option value="Grade 9">Grade 9</option>
                       <option value="Grade 10">Grade 10</option>
-                      <option value="Grade 11">Grade 11</option>
-                      <option value="Grade 12">Grade 12</option>
                     </select>
                   </div>
                   <div>
@@ -529,6 +539,17 @@ export default function StudentsManagement() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState?.isOpen || false}
+        onClose={closeConfirm}
+        onConfirm={confirmState?.onConfirm || (() => {})}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText}
+        cancelText={confirmState?.cancelText}
+        variant={confirmState?.variant}
+      />
     </>
   );
 }

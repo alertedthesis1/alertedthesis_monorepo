@@ -25,7 +25,9 @@ import {
 import StatCard from '@/components/ui/StatCard';
 import RiskBadge from '@/components/ui/RiskBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { fetchStudentDetail, StudentDetail, fetchStudentInterventions, fetchStudentSchedules, fetchStudentReports, fetchStudentAISummary, fetchStudentAcademics, fetchStudentAttendance, createAcademicRecord, updateAcademicRecord, deleteAcademicRecord, createAttendanceRecord, updateAttendanceRecord, deleteAttendanceRecord, Intervention, Schedule, Report, getStudentAttendance, getStudentAcademicRecords } from '@/lib/api';
+import { useConfirm } from '@/hooks/useConfirm';
 
 const TABS = ['Overview', 'Academic', 'Attendance', 'Interventions', 'Summary'];
 
@@ -59,6 +61,7 @@ const ALERT_STYLES: Record<string, string> = {
 export default function StudentProfile() {
   const router = useRouter();
   const { id } = router.query;
+  const { confirm, confirmState, closeConfirm } = useConfirm();
   const [tab, setTab] = useState('Overview');
   const [student, setStudent] = useState<StudentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -309,7 +312,12 @@ export default function StudentProfile() {
   // Handle deletion of an academic record
   // Shows confirmation dialog, deletes record, and refreshes the list
   const handleDeleteAcademic = async (academicId: string) => {
-    if (!confirm('Are you sure you want to delete this academic record?')) return;
+    const confirmed = await confirm(
+      'Delete Academic Record',
+      'Are you sure you want to delete this academic record?',
+      { confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' }
+    );
+    if (!confirmed) return;
     try {
       await deleteAcademicRecord(academicId);
       if (typeof id === 'string') {
@@ -330,8 +338,14 @@ export default function StudentProfile() {
 
   // Open the academic modal for creating or editing
   // Pre-fills form data if editing, clears form if creating new record
-  const openAcademicModal = (academic?: any) => {
+  const openAcademicModal = async (academic?: any) => {
     if (academic) {
+      const confirmed = await confirm(
+        'Edit Academic Record',
+        'Are you sure you want to edit this academic record?',
+        { confirmText: 'Edit', cancelText: 'Cancel', variant: 'info' }
+      );
+      if (!confirmed) return;
       setEditingAcademic(academic);
       setAcademicForm({
         term: academic.term,
@@ -390,7 +404,12 @@ export default function StudentProfile() {
   // Handle deletion of an attendance record
   // Shows confirmation dialog, deletes record, and refreshes the list
   const handleDeleteAttendance = async (attendanceId: string) => {
-    if (!confirm('Are you sure you want to delete this attendance record?')) return;
+    const confirmed = await confirm(
+      'Delete Attendance Record',
+      'Are you sure you want to delete this attendance record?',
+      { confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' }
+    );
+    if (!confirmed) return;
     try {
       await deleteAttendanceRecord(attendanceId);
       if (typeof id === 'string') {
@@ -411,8 +430,14 @@ export default function StudentProfile() {
 
   // Open the attendance modal for creating or editing
   // Pre-fills form data if editing, clears form if creating new record
-  const openAttendanceModal = (attendance?: any, date?: Date) => {
+  const openAttendanceModal = async (attendance?: any, date?: Date) => {
     if (attendance) {
+      const confirmed = await confirm(
+        'Edit Attendance Record',
+        'Are you sure you want to edit this attendance record?',
+        { confirmText: 'Edit', cancelText: 'Cancel', variant: 'info' }
+      );
+      if (!confirmed) return;
       setEditingAttendance(attendance);
       setAttendanceForm({
         attendance_date: attendance.attendance_date.split('T')[0],
@@ -1294,6 +1319,17 @@ export default function StudentProfile() {
           </div>
         </div>
       )}
+
+      <ConfirmModal
+        isOpen={confirmState?.isOpen || false}
+        onClose={closeConfirm}
+        onConfirm={confirmState?.onConfirm || (() => {})}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText}
+        cancelText={confirmState?.cancelText}
+        variant={confirmState?.variant}
+      />
     </>
   );
 }

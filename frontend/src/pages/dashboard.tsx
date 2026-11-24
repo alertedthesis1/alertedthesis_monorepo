@@ -15,6 +15,8 @@ import StatCard from '@/components/ui/StatCard';
 import RiskBadge from '@/components/ui/RiskBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import EarlyWarningBadge from '@/components/ui/EarlyWarningBadge';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import StatCardSkeleton, { StudentRowSkeleton } from '@/components/ui/SkeletonLoader';
 import { fetchDashboardStats, fetchStudents, fetchEarlyWarningBatchPredictions, fetchInsights, DashboardStats, StudentSummary, EarlyWarningPrediction } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 
@@ -135,28 +137,39 @@ export default function Dashboard() {
 
         {/* Stat cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Total Students" value={(stats?.totalStudents ?? 0).toLocaleString()} caption="Active enrollment" icon={Users}>
-            <div className="mt-3 h-1 rounded-full bg-green-500/60" />
-          </StatCard>
-          <StatCard
-            label="At Risk"
-            value={stats?.atRisk ?? 0}
-            caption={`${stats?.atRiskPercent ?? 0}% of total students`}
-            icon={AlertTriangle}
-            iconColor="text-red-500"
-            valueColor="text-red-600"
-          >
-            <div className="mt-3 h-2 rounded-full bg-red-200" />
-          </StatCard>
-          <StatCard label="Interventions" value={stats?.interventions ?? 0} caption="This week" icon={CalendarDays} iconColor="text-green-600" />
-          <StatCard
-            label="Pending Tasks"
-            value={stats?.tasks ?? 0}
-            caption="Tasks awaiting completion"
-            icon={StickyNote}
-            iconColor="text-purple-600"
-            valueColor="text-purple-600"
-          />
+          {loading ? (
+            <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+              <StatCardSkeleton />
+            </>
+          ) : (
+            <>
+              <StatCard label="Total Students" value={(stats?.totalStudents ?? 0).toLocaleString()} caption="Active enrollment" icon={Users}>
+                <div className="mt-3 h-1 rounded-full bg-green-500/60" />
+              </StatCard>
+              <StatCard
+                label="At Risk"
+                value={stats?.atRisk ?? 0}
+                caption={`${stats?.atRiskPercent ?? 0}% of total students`}
+                icon={AlertTriangle}
+                iconColor="text-red-500"
+                valueColor="text-red-600"
+              >
+                <div className="mt-3 h-2 rounded-full bg-red-200" />
+              </StatCard>
+              <StatCard label="Interventions" value={stats?.interventions ?? 0} caption="This week" icon={CalendarDays} iconColor="text-green-600" />
+              <StatCard
+                label="Pending Tasks"
+                value={stats?.tasks ?? 0}
+                caption="Tasks awaiting completion"
+                icon={StickyNote}
+                iconColor="text-purple-600"
+                valueColor="text-purple-600"
+              />
+            </>
+          )}
         </div>
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -170,7 +183,13 @@ export default function Dashboard() {
               <p className="mb-4 text-sm text-gray-500">Students requiring immediate attention and intervention</p>
 
               <div className="space-y-4">
-                {loading && <p className="text-sm text-gray-400">Loading students...</p>}
+                {loading && (
+                  <>
+                    <StudentRowSkeleton />
+                    <StudentRowSkeleton />
+                    <StudentRowSkeleton />
+                  </>
+                )}
                 {!loading && highPriority.length === 0 && (
                   <p className="text-sm text-gray-400">No high priority students.</p>
                 )}
@@ -277,22 +296,36 @@ export default function Dashboard() {
               <h3 className="text-base font-bold text-gray-900">Recent Insights</h3>
               <p className="mb-4 text-sm text-gray-500">AI-generated recommendations</p>
               <div className="space-y-3">
-                {insights.length === 0 && <p className="text-sm text-gray-400">No insights available.</p>}
-                {insights.map((i: any) => (
-                  <div
-                    key={i.title}
-                    className={`rounded-lg border-l-4 p-3 ${
-                      i.priority === 'high'
-                        ? 'border-red-600 bg-red-50'
-                        : i.priority === 'medium'
-                        ? 'border-amber-400 bg-amber-50'
-                        : 'border-green-600 bg-green-50'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-gray-900">{i.title}</p>
-                    <p className="mt-1 text-xs text-gray-600">{i.description}</p>
-                  </div>
-                ))}
+                {loading ? (
+                  <>
+                    <div className="animate-pulse rounded-lg border-l-4 border-gray-300 bg-gray-100 p-3">
+                      <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
+                      <div className="h-3 w-full bg-gray-200 rounded" />
+                    </div>
+                    <div className="animate-pulse rounded-lg border-l-4 border-gray-300 bg-gray-100 p-3">
+                      <div className="h-4 w-32 bg-gray-200 rounded mb-2" />
+                      <div className="h-3 w-full bg-gray-200 rounded" />
+                    </div>
+                  </>
+                ) : insights.length === 0 ? (
+                  <p className="text-sm text-gray-400">No insights available.</p>
+                ) : (
+                  insights.map((i: any) => (
+                    <div
+                      key={i.title}
+                      className={`rounded-lg border-l-4 p-3 ${
+                        i.priority === 'high'
+                          ? 'border-red-600 bg-red-50'
+                          : i.priority === 'medium'
+                          ? 'border-amber-400 bg-amber-50'
+                          : 'border-green-600 bg-green-50'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-gray-900">{i.title}</p>
+                      <p className="mt-1 text-xs text-gray-600">{i.description}</p>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

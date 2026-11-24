@@ -23,9 +23,11 @@ import StatCard from '@/components/ui/StatCard';
 import RiskBadge from '@/components/ui/RiskBadge';
 import ProgressBar from '@/components/ui/ProgressBar';
 import EarlyWarningBadge from '@/components/ui/EarlyWarningBadge';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { fetchStudents, StudentSummary, fetchSchedules, createSchedule, updateSchedule, deleteSchedule, Schedule, fetchInterventions, Intervention, fetchTasks, createTask, updateTask, deleteTask, Task, fetchReports, Report, fetchDashboardStats, DashboardStats, generateReport, downloadReport, fetchEarlyWarningPrediction, fetchEarlyWarningBatchPredictions, EarlyWarningPrediction, recalculateAllRiskScores } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useNotification } from '@/context/NotificationContext';
+import { useConfirm } from '@/hooks/useConfirm';
 
 const TABS = ['My Caseload', 'Schedule', 'Interventions', 'Tasks', 'Reports'];
 
@@ -61,6 +63,7 @@ export default function Counselor() {
   const router = useRouter();
   const { user } = useAuth();
   const { success, error, warning } = useNotification();
+  const { confirm, confirmState, closeConfirm } = useConfirm();
   const [tab, setTab] = useState('My Caseload');
   const [query, setQuery] = useState('');
   const [caseload, setCaseload] = useState<StudentSummary[]>([]);
@@ -312,6 +315,29 @@ export default function Counselor() {
 
   const handleNewSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate student exists in caseload
+    const validStudent = caseload.find(s => s.id === appointmentForm.student_id);
+    if (!validStudent) {
+      error('Invalid Student', 'Please select a valid student from the dropdown');
+      return;
+    }
+
+    // Validate student name matches
+    if (validStudent.firstName + ' ' + validStudent.lastName !== appointmentForm.student_name) {
+      error('Invalid Student Name', 'Student name does not match the selected student');
+      return;
+    }
+
+    // Validate intervention ID if provided
+    if (appointmentForm.intervention_id) {
+      const validIntervention = interventions.find(i => i._id === appointmentForm.intervention_id);
+      if (!validIntervention) {
+        error('Invalid Intervention', 'Please select a valid intervention ID');
+        return;
+      }
+    }
+
     setAddingAppointment(true);
     try {
       await createSchedule({
@@ -350,6 +376,29 @@ export default function Counselor() {
   const handleEditSchedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingSchedule) return;
+
+    // Validate student exists in caseload
+    const validStudent = caseload.find(s => s.id === appointmentForm.student_id);
+    if (!validStudent) {
+      error('Invalid Student', 'Please select a valid student from the dropdown');
+      return;
+    }
+
+    // Validate student name matches
+    if (validStudent.firstName + ' ' + validStudent.lastName !== appointmentForm.student_name) {
+      error('Invalid Student Name', 'Student name does not match the selected student');
+      return;
+    }
+
+    // Validate intervention ID if provided
+    if (appointmentForm.intervention_id) {
+      const validIntervention = interventions.find(i => i._id === appointmentForm.intervention_id);
+      if (!validIntervention) {
+        error('Invalid Intervention', 'Please select a valid intervention ID');
+        return;
+      }
+    }
+
     setAddingAppointment(true);
     try {
       await updateSchedule(editingSchedule._id, {
@@ -382,7 +431,12 @@ export default function Counselor() {
   };
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    const confirmed = await confirm(
+      'Delete Schedule',
+      'Are you sure you want to delete this schedule?',
+      { confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' }
+    );
+    if (!confirmed) return;
     try {
       await deleteSchedule(id);
       const updatedSchedules = await fetchSchedules(user?.email);
@@ -396,6 +450,25 @@ export default function Counselor() {
 
   const handleNewTask = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate student ID if provided
+    if (taskForm.student_id) {
+      const validStudent = caseload.find(s => s.id === taskForm.student_id);
+      if (!validStudent) {
+        error('Invalid Student', 'Please select a valid student ID');
+        return;
+      }
+    }
+
+    // Validate intervention ID if provided
+    if (taskForm.intervention_id) {
+      const validIntervention = interventions.find(i => i._id === taskForm.intervention_id);
+      if (!validIntervention) {
+        error('Invalid Intervention', 'Please select a valid intervention ID');
+        return;
+      }
+    }
+
     try {
       if (editingTask) {
         await updateTask(editingTask._id, taskForm);
@@ -423,25 +496,36 @@ export default function Counselor() {
       });
     } catch (err) {
       console.error(err);
-      alert(editingTask ? 'Failed to update task' : 'Failed to create task');
+      error('Task Operation Failed', editingTask ? 'Failed to update task' : 'Failed to create task');
     }
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+    const confirmed = await confirm(
+      'Delete Task',
+      'Are you sure you want to delete this task?',
+      { confirmText: 'Delete', cancelText: 'Cancel', variant: 'danger' }
+    );
+    if (!confirmed) return;
     try {
       await deleteTask(id);
       const updatedTasks = await fetchTasks();
       setTasks(updatedTasks);
-      alert('Task deleted successfully!');
+      success('Task Deleted', 'Task deleted successfully!');
     } catch (err) {
       console.error(err);
-      alert('Failed to delete task');
+      error('Task Deletion Failed', 'Failed to delete task');
     }
   };
 
-  const openTaskModal = (task?: Task) => {
+  const openTaskModal = async (task?: Task) => {
     if (task) {
+      const confirmed = await confirm(
+        'Edit Task',
+        `Are you sure you want to edit this task: ${task.title}?`,
+        { confirmText: 'Edit', cancelText: 'Cancel', variant: 'info' }
+      );
+      if (!confirmed) return;
       setEditingTask(task);
       setTaskForm({
         title: task.title,
@@ -469,7 +553,13 @@ export default function Counselor() {
     setShowTaskModal(true);
   };
 
-  const openEditModal = (schedule: Schedule) => {
+  const openEditModal = async (schedule: Schedule) => {
+    const confirmed = await confirm(
+      'Edit Schedule',
+      `Are you sure you want to edit this schedule for ${schedule.student_name}?`,
+      { confirmText: 'Edit', cancelText: 'Cancel', variant: 'info' }
+    );
+    if (!confirmed) return;
     setEditingSchedule(schedule);
     setAppointmentForm({
       student_id: schedule.student_id,
@@ -579,8 +669,6 @@ export default function Counselor() {
                   <option value="Grade 8">Grade 8</option>
                   <option value="Grade 9">Grade 9</option>
                   <option value="Grade 10">Grade 10</option>
-                  <option value="Grade 11">Grade 11</option>
-                  <option value="Grade 12">Grade 12</option>
                 </select>
                 <button
                   onClick={() => {
@@ -1611,13 +1699,18 @@ export default function Counselor() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Intervention ID (Optional)</label>
-                  <input
-                    type="text"
+                  <select
                     value={appointmentForm.intervention_id || ''}
-                    onChange={(e) => setAppointmentForm({ ...appointmentForm, intervention_id: e.target.value })}
-                    placeholder="e.g., M202600001"
+                    onChange={(e) => setAppointmentForm({ ...appointmentForm, intervention_id: e.target.value || '' })}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
+                  >
+                    <option value="">No Intervention</option>
+                    {interventions.map((intervention) => (
+                      <option key={intervention._id} value={intervention._id}>
+                        {(intervention as any).intervention_id || intervention._id} - {intervention.intervention_type}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Notes</label>
@@ -1812,29 +1905,115 @@ export default function Counselor() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Student (Optional)</label>
-                  <div className="relative">
-                    <input
-                      value={taskForm.student_id ? caseload.find(s => s.id === taskForm.student_id)?.firstName + ' ' + caseload.find(s => s.id === taskForm.student_id)?.lastName || '' : ''}
-                      onChange={(e) => {
-                        const student = caseload.find(s => `${s.firstName} ${s.lastName}`.toLowerCase() === e.target.value.toLowerCase());
-                        if (student) {
-                          setTaskForm({ ...taskForm, student_id: student.id });
+                  <select
+                    value={taskForm.student_id || ''}
+                    onChange={(e) => {
+                      const selectedStudentId = e.target.value || '';
+                      // If intervention is selected and doesn't belong to this student, clear it
+                      if (taskForm.intervention_id && selectedStudentId) {
+                        const intervention = interventions.find(i => i._id === taskForm.intervention_id);
+                        const interventionStudentId = typeof intervention?.student_id === 'object' 
+                          ? (intervention.student_id as any)._id 
+                          : intervention?.student_id;
+                        if (intervention && interventionStudentId !== selectedStudentId) {
+                          setTaskForm({ ...taskForm, student_id: selectedStudentId, intervention_id: '' });
+                        } else {
+                          setTaskForm({ ...taskForm, student_id: selectedStudentId });
                         }
-                      }}
-                      placeholder="Search and select student"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    />
-                  </div>
+                      } else {
+                        setTaskForm({ ...taskForm, student_id: selectedStudentId });
+                      }
+                    }}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">No Student</option>
+                    {(() => {
+                      // If an intervention is selected, only show the student related to it
+                      if (taskForm.intervention_id) {
+                        const intervention = interventions.find(i => i._id === taskForm.intervention_id);
+                        if (intervention) {
+                          const interventionStudentId = typeof intervention.student_id === 'object' 
+                            ? (intervention.student_id as any)._id 
+                            : intervention.student_id;
+                          const student = caseload.find(s => s.id === interventionStudentId);
+                          if (student) {
+                            return (
+                              <option key={student.id} value={student.id}>
+                                {student.firstName} {student.lastName} ({student.grade} - {student.section})
+                              </option>
+                            );
+                          }
+                        }
+                        return null;
+                      }
+                      // Otherwise show all students
+                      return caseload.map((student) => (
+                        <option key={student.id} value={student.id}>
+                          {student.firstName} {student.lastName} ({student.grade} - {student.section})
+                        </option>
+                      ));
+                    })()}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Intervention ID (Optional)</label>
-                  <input
-                    type="text"
-                    value={taskForm.intervention_id}
-                    onChange={(e) => setTaskForm({ ...taskForm, intervention_id: e.target.value })}
-                    placeholder="e.g., C202600001"
+                  <select
+                    value={taskForm.intervention_id || ''}
+                    onChange={(e) => {
+                      const selectedInterventionId = e.target.value || '';
+                      // If student is selected and intervention doesn't belong to this student, clear student
+                      if (taskForm.student_id && selectedInterventionId) {
+                        const intervention = interventions.find(i => i._id === selectedInterventionId);
+                        const interventionStudentId = typeof intervention?.student_id === 'object' 
+                          ? (intervention.student_id as any)._id 
+                          : intervention?.student_id;
+                        if (intervention && interventionStudentId !== taskForm.student_id) {
+                          setTaskForm({ ...taskForm, intervention_id: selectedInterventionId, student_id: interventionStudentId });
+                        } else {
+                          setTaskForm({ ...taskForm, intervention_id: selectedInterventionId });
+                        }
+                      } else if (selectedInterventionId) {
+                        // Auto-select the student when an intervention is chosen
+                        const intervention = interventions.find(i => i._id === selectedInterventionId);
+                        if (intervention) {
+                          const interventionStudentId = typeof intervention.student_id === 'object' 
+                            ? (intervention.student_id as any)._id 
+                            : intervention.student_id;
+                          setTaskForm({ ...taskForm, intervention_id: selectedInterventionId, student_id: interventionStudentId });
+                        } else {
+                          setTaskForm({ ...taskForm, intervention_id: selectedInterventionId });
+                        }
+                      } else {
+                        setTaskForm({ ...taskForm, intervention_id: selectedInterventionId });
+                      }
+                    }}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
+                  >
+                    <option value="">No Intervention</option>
+                    {(() => {
+                      // If a student is selected, only show interventions related to that student
+                      if (taskForm.student_id) {
+                        return interventions
+                          .filter(intervention => {
+                            const interventionStudentId = typeof intervention.student_id === 'object' 
+                              ? (intervention.student_id as any)._id 
+                              : intervention.student_id;
+                            return interventionStudentId === taskForm.student_id;
+                          })
+                          .map((intervention) => (
+                            <option key={intervention._id} value={intervention._id}>
+                              {(intervention as any).intervention_id || intervention._id} - {intervention.intervention_type}
+                            </option>
+                          ));
+                      }
+                      // Otherwise show all interventions
+                      return interventions.map((intervention) => (
+                        <option key={intervention._id} value={intervention._id}>
+                          {(intervention as any).intervention_id || intervention._id} - {intervention.intervention_type}
+                        </option>
+                      ));
+                    })()}
+                  </select>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -2001,13 +2180,18 @@ export default function Counselor() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Intervention ID (Optional)</label>
-                  <input
-                    type="text"
+                  <select
                     value={appointmentForm.intervention_id || ''}
-                    onChange={(e) => setAppointmentForm({ ...appointmentForm, intervention_id: e.target.value })}
-                    placeholder="e.g., M202600001"
+                    onChange={(e) => setAppointmentForm({ ...appointmentForm, intervention_id: e.target.value || '' })}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
+                  >
+                    <option value="">No Intervention</option>
+                    {interventions.map((intervention) => (
+                      <option key={intervention._id} value={intervention._id}>
+                        {(intervention as any).intervention_id || intervention._id} - {intervention.intervention_type}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-gray-600">Notes</label>
@@ -2124,6 +2308,17 @@ export default function Counselor() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState?.isOpen || false}
+        onClose={closeConfirm}
+        onConfirm={confirmState?.onConfirm || (() => {})}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText}
+        cancelText={confirmState?.cancelText}
+        variant={confirmState?.variant}
+      />
     </>
   );
 }

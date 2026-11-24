@@ -22,9 +22,11 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import StatCard from '@/components/ui/StatCard';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import { Role, useAuth } from '@/context/AuthContext';
 import axios from 'axios';
 import { fetchUsers, createUser, updateUser, deleteUser, archiveUser, restoreUser, resetUserPassword, User } from '@/lib/api';
+import { useConfirm } from '@/hooks/useConfirm';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
@@ -67,6 +69,7 @@ const ROLE_ICON: Record<Role, any> = {
 export default function Admin() {
   const router = useRouter();
   const { user } = useAuth();
+  const { confirm, confirmState, closeConfirm } = useConfirm();
   const [filter, setFilter] = useState<'all' | Role>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'name' | 'email' | 'role'>('name');
@@ -142,10 +145,29 @@ export default function Admin() {
   const filteredActivityLogs = activityLogs
     .filter((log) => {
       if (activityLogFilter === 'all') return true;
-      const actionLower = log.action.toLowerCase();
-      if (activityLogFilter === 'login') return actionLower.includes('login') || actionLower.includes('logged in');
-      if (activityLogFilter === 'edit') return actionLower.includes('edit') || actionLower.includes('updated');
-      if (activityLogFilter === 'add') return actionLower.includes('add') || actionLower.includes('created');
+      const actionLower = log.action.toLowerCase().trim();
+
+      // Login category
+      if (activityLogFilter === 'login') {
+        return actionLower === 'login' || actionLower.includes('logged in');
+      }
+
+      // User Edits category (includes updates, archives, restores, password resets)
+      if (activityLogFilter === 'edit') {
+        return (
+          actionLower.includes('updated') ||
+          actionLower.includes('edit') ||
+          actionLower.includes('archived') ||
+          actionLower.includes('restored') ||
+          actionLower.includes('reset password')
+        );
+      }
+
+      // Added User category
+      if (activityLogFilter === 'add') {
+        return actionLower.includes('added') || actionLower.includes('created');
+      }
+
       return true;
     })
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -246,8 +268,15 @@ export default function Admin() {
   };
 
   const handleArchiveUser = async (user: ManagedUser) => {
-    if (!confirm(`Are you sure you want to archive ${user.name}? This will deactivate their account.`)) return;
-    
+    const confirmed = await confirm(
+      user.isActive ? 'Archive User' : 'Restore User',
+      user.isActive
+        ? `Are you sure you want to archive ${user.name}? This will deactivate their account.`
+        : `Are you sure you want to restore ${user.name}? This will reactivate their account.`,
+      { confirmText: user.isActive ? 'Archive' : 'Restore', cancelText: 'Cancel', variant: 'warning' }
+    );
+    if (!confirmed) return;
+
     try {
       if (user.isActive) {
         await archiveUser(user._id);
@@ -309,7 +338,13 @@ export default function Admin() {
     setShowActions(null);
   };
 
-  const openResetPasswordModal = (user: ManagedUser) => {
+  const openResetPasswordModal = async (user: ManagedUser) => {
+    const confirmed = await confirm(
+      'Reset Password',
+      `Are you sure you want to reset the password for ${user.name}?`,
+      { confirmText: 'Reset', cancelText: 'Cancel', variant: 'warning' }
+    );
+    if (!confirmed) return;
     setSelectedUser(user);
     setResetPasswordForm({ password: '', confirmPassword: '' });
     setShowResetPasswordModal(true);
@@ -768,6 +803,17 @@ export default function Admin() {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={confirmState?.isOpen || false}
+        onClose={closeConfirm}
+        onConfirm={confirmState?.onConfirm || (() => {})}
+        title={confirmState?.title || ''}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText}
+        cancelText={confirmState?.cancelText}
+        variant={confirmState?.variant}
+      />
     </>
   );
 }
