@@ -156,16 +156,21 @@ export default function Admin() {
       if (activityLogFilter === 'edit') {
         return (
           actionLower.includes('updated') ||
-          actionLower.includes('edit') ||
+          actionLower.includes('edited') ||
           actionLower.includes('archived') ||
           actionLower.includes('restored') ||
-          actionLower.includes('reset password')
+          actionLower.includes('reset password') ||
+          actionLower.includes('reset') ||
+          actionLower === 'archived user' ||
+          actionLower === 'restored user' ||
+          actionLower === 'updated user' ||
+          actionLower === 'reset password'
         );
       }
 
       // Added User category
       if (activityLogFilter === 'add') {
-        return actionLower.includes('added') || actionLower.includes('created');
+        return actionLower.includes('added') || actionLower.includes('created') || actionLower === 'added user';
       }
 
       return true;
